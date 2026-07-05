@@ -30,7 +30,7 @@ public struct RootView: View {
         }
         .onAppear {
             #if DEBUG
-            NSLog("PartyGames screen bounds: %@ safe area: %@", NSStringFromCGRect(UIScreen.main.bounds), NSStringFromUIEdgeInsets(UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow?.safeAreaInsets }.first ?? .zero))
+            NSLog("PartyGames screen bounds: %@ safe area: %@", NSCoder.string(for: UIScreen.main.bounds), NSCoder.string(for: UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow?.safeAreaInsets }.first ?? .zero))
             #endif
         }
     }
