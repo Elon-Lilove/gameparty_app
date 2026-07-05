@@ -20,17 +20,30 @@ struct HomeCardStackView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let width = proxy.size.width
+            let bleed = DesignTokens.pageHorizontalPadding
+            let stackWidth = proxy.size.width + bleed * 2
+            let mainWidth = DesignTokens.cardWidth * DesignTokens.mainCardScale
             ZStack {
                 if let prev = neighbor(offset: -1) {
-                    peekCard(game: prev, side: .left, width: width)
-                        .onTapGesture { changeCard(direction: -1, axis: .horizontal) }
+                    peekCard(
+                        game: prev,
+                        side: .left,
+                        stackWidth: stackWidth,
+                        mainWidth: mainWidth
+                    )
+                    .onTapGesture { changeCard(direction: -1, axis: .horizontal) }
                 }
                 if let next = neighbor(offset: 1) {
-                    peekCard(game: next, side: .right, width: width)
-                        .onTapGesture { changeCard(direction: 1, axis: .horizontal) }
+                    peekCard(
+                        game: next,
+                        side: .right,
+                        stackWidth: stackWidth,
+                        mainWidth: mainWidth
+                    )
+                    .onTapGesture { changeCard(direction: 1, axis: .horizontal) }
                 }
                 mainCard
+                    .scaleEffect(DesignTokens.mainCardScale)
                     .zIndex(2)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -66,51 +79,36 @@ struct HomeCardStackView: View {
     private enum Side { case left, right }
     private enum Axis { case vertical, horizontal }
 
-    private func peekCard(game: Game, side: Side, width: CGFloat) -> some View {
+    private func peekCard(game: Game, side: Side, stackWidth: CGFloat, mainWidth: CGFloat) -> some View {
         let palette = GameHeaderPalettes.palette(forGameID: game.id, in: games)
-        let visibleWidth = max(52, (width - DesignTokens.cardWidth) / 2 - DesignTokens.peekCardInset)
+        let visibleWidth = max(
+            DesignTokens.peekVisibleMinWidth,
+            (stackWidth - mainWidth) / 2 - DesignTokens.peekCardInset + DesignTokens.peekCenterPull
+        )
+        let peekOffset = stackWidth / 2 - DesignTokens.peekEdgeInset - DesignTokens.cardWidth / 2
+            - DesignTokens.peekCenterPull
         let image = images[game.id] ?? AssetStore.bundledImage(for: game.id)
+        let horizontalAlignment: HorizontalAlignment = side == .left ? .leading : .trailing
 
-        return ZStack(alignment: side == .left ? .leading : .trailing) {
+        return ZStack(alignment: .top) {
             RoundedRectangle(cornerRadius: DesignTokens.peekCornerRadius, style: .continuous)
                 .fill(palette.backgroundGradient)
-            VStack(alignment: side == .left ? .leading : .trailing, spacing: 5) {
-                Text(game.name)
-                    .font(DesignTokens.titleFont(size: 15))
-                    .foregroundStyle(palette.title)
-                    .lineLimit(1)
-                    .frame(width: visibleWidth, alignment: side == .left ? .leading : .trailing)
-                Text(game.firstRuleLine)
-                    .font(DesignTokens.bodyFont(size: 11))
-                    .foregroundStyle(DesignTokens.stone600.opacity(0.72))
-                    .lineLimit(2)
-                    .frame(width: visibleWidth, alignment: side == .left ? .leading : .trailing)
-                artPreview(image: image, game: game, side: side)
-            }
-            .padding(16)
+            GameCardTopSection(
+                game: game,
+                palette: palette,
+                image: image,
+                layout: .peek(visibleWidth: visibleWidth, side: horizontalAlignment)
+            )
+            .padding(.horizontal, 16)
+            .padding(.top, 18)
+            .padding(.bottom, 16)
         }
-        .frame(width: DesignTokens.cardWidth, height: DesignTokens.cardHeight)
+        .frame(width: DesignTokens.cardWidth)
+        .aspectRatio(DesignTokens.cardAspectRatio, contentMode: .fit)
+        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.peekCornerRadius, style: .continuous))
         .rotationEffect(.degrees(side == .left ? -DesignTokens.peekRotation : DesignTokens.peekRotation))
-        .offset(x: side == .left ? -(width / 2 - DesignTokens.peekCardInset - 40) : (width / 2 - DesignTokens.peekCardInset - 40))
+        .offset(x: side == .left ? -peekOffset : peekOffset)
         .allowsHitTesting(!locked && !spinning)
-    }
-
-    @ViewBuilder
-    private func artPreview(image: UIImage?, game: Game, side: Side) -> some View {
-        ZStack {
-            if let image {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-            } else {
-                Color.white.opacity(0.34)
-                Text(game.type.emoji)
-                    .font(.system(size: 36))
-            }
-        }
-        .frame(width: DesignTokens.artWidth, height: min(DesignTokens.artHeight, 200))
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.artCornerRadius, style: .continuous))
-        .frame(maxWidth: .infinity, alignment: side == .left ? .leading : .trailing)
     }
 
     private var dragGesture: some Gesture {

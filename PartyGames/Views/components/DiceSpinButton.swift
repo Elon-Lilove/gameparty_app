@@ -18,7 +18,7 @@ struct DiceSpinButton: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: 70, height: 70)
+                        .frame(width: DesignTokens.diceGlowDiameter, height: DesignTokens.diceGlowDiameter)
                         .shadow(color: DesignTokens.actionCoral.opacity(0.25), radius: 10, y: 5)
                     Circle()
                         .fill(
@@ -28,9 +28,9 @@ struct DiceSpinButton: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: 62, height: 62)
+                        .frame(width: DesignTokens.diceButtonDiameter, height: DesignTokens.diceButtonDiameter)
                     DiceFaceView(value: spinning ? diceFace + 1 : 5)
-                        .frame(width: 38, height: 38)
+                        .frame(width: DesignTokens.diceFaceSize, height: DesignTokens.diceFaceSize)
                         .background(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                         .overlay {

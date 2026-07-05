@@ -25,14 +25,56 @@ enum DesignTokens {
 
     static let cardWidth: CGFloat = 248
     static let cardHeight: CGFloat = 436
+    static let cardMinHeight: CGFloat = 390
+    static let peekCardHeight: CGFloat = 390
     static let cardCornerRadius: CGFloat = 30
     static let peekCornerRadius: CGFloat = 30
     static let artWidth: CGFloat = 216
     static let artHeight: CGFloat = 240
     static let artCornerRadius: CGFloat = 18
     static let peekCardInset: CGFloat = 16
+    static let peekEdgeInset: CGFloat = 16
+    static let peekVisibleMinWidth: CGFloat = 52
+    static let peekCenterPull: CGFloat = 12
+    static let mainCardScale: CGFloat = 1
     static let peekRotation: Double = 2
     static let stackMinHeight: CGFloat = 416
+    static let cardAspectRatio: CGFloat = cardWidth / cardMinHeight
+    static let deckMinScale: CGFloat = 0.82
+    /// Intentional breathing room above the card stack.
+    static let cardZoneTopInset: CGFloat = 16
+    /// Gap between card shadow edge and the dice action row.
+    static let cardAboveActionGap: CGFloat = 8
+    /// Space reserved below the card layout box for its drop shadow.
+    static let cardShadowOverflow: CGFloat = 32
+
+    static var cardBottomReserve: CGFloat {
+        cardAboveActionGap + cardShadowOverflow
+    }
+
+    // MARK: - Card typography (measured from web at 390pt baseline)
+
+    static let cardTitleSize: CGFloat = 19
+    static let cardHeaderHeight: CGFloat = 44
+    static let cardDescSize: CGFloat = 11
+    static let cardStatsSize: CGFloat = 11
+    static let cardStartSize: CGFloat = 12
+    static let peekTitleSize: CGFloat = 14
+    static let peekDescSize: CGFloat = 10
+
+    // MARK: - Home controls (measured from the 390 × 844 web reference)
+
+    static let homeActionBarHeight: CGFloat = 90
+    static let sideActionWidth: CGFloat = 76
+    static let sideActionHeight: CGFloat = 48
+    static let sideActionCornerRadius: CGFloat = 20
+    static let sideActionFontSize: CGFloat = 9
+    static let diceButtonDiameter: CGFloat = 64
+    static let diceGlowDiameter: CGFloat = 70
+    static let diceFaceSize: CGFloat = 36
+    static let diceLabelSize: CGFloat = 10
+    static let tabBarHeight: CGFloat = 67
+    static let controlToTabGap: CGFloat = 6
 
     // MARK: - Drag / swipe (HomeCardStack.tsx)
 
@@ -59,10 +101,6 @@ enum DesignTokens {
     static let promoCountdownSeconds: Int = 5
     static let promoCollapseMs: Double = 0.32
 
-    // MARK: - Tab bar
-
-    static let tabBarHeight: CGFloat = 49
-
     // MARK: - Typography
 
     static func titleFont(size: CGFloat = 22) -> Font {
@@ -81,6 +119,14 @@ enum DesignTokens {
 
     static func scaled(_ value: CGFloat, width: CGFloat) -> CGFloat {
         value * scale(for: width)
+    }
+
+    /// Uniform scale so the deck fills the available height while keeping 248:390 proportions.
+    static func deckScale(zoneWidth: CGFloat, availableHeight: CGFloat) -> CGFloat {
+        let stackWidth = zoneWidth + pageHorizontalPadding * 2
+        let heightScale = max(0, availableHeight) / stackMinHeight
+        let widthScale = stackWidth / baselineWidth
+        return max(deckMinScale, min(heightScale, widthScale))
     }
 }
 

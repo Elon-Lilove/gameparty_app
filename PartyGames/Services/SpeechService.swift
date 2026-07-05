@@ -46,17 +46,19 @@ final class SpeechService: NSObject, ObservableObject {
 
 extension SpeechService: AVSpeechSynthesizerDelegate {
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didStart utterance: AVSpeechUtterance) {
+        let spokenText = utterance.speechString
         Task { @MainActor [weak self] in
             guard let self,
-                  let index = self.utterances.firstIndex(where: { $0 === utterance }) else { return }
+                  let index = self.utterances.firstIndex(where: { $0.speechString == spokenText }) else { return }
             self.currentSentenceIndex = index
         }
     }
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        let spokenText = utterance.speechString
         Task { @MainActor [weak self] in
             guard let self,
-                  let index = self.utterances.firstIndex(where: { $0 === utterance }) else { return }
+                  let index = self.utterances.firstIndex(where: { $0.speechString == spokenText }) else { return }
             if index == self.utterances.count - 1 {
                 self.utterances.removeAll()
                 self.isPlaying = false

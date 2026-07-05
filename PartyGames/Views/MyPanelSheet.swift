@@ -6,7 +6,7 @@ struct MyPanelSheet: View {
     @State private var favoriteQuery = ""
     @State private var adminPasswordInput = ""
     @State private var adminError = ""
-    @State private var adminUnlocked = false
+    @AppStorage("partyGames.adminUnlocked") private var adminUnlocked = false
     @AppStorage("partyGames.adminPassword") private var adminPassword = "888888"
 
     var body: some View {
@@ -31,6 +31,7 @@ struct MyPanelSheet: View {
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .top)
             }
+            .scrollBounceBehavior(.basedOnSize)
         }
         .creamBackground()
         .presentationDetents([.large])
@@ -91,7 +92,7 @@ struct MyPanelSheet: View {
             panelMenuCard(title: "骰子", subtitle: "随机掷出 1-6 点", icon: "dice.fill", tone: .purple) {
                 viewModel.myPanelScreen = .dice
             }
-            panelMenuCard(title: "管理者模式", subtitle: "查看游戏卡片与管理入口", icon: "lock.fill", tone: DesignTokens.stone600) {
+            panelMenuCard(title: "管理者模式", subtitle: "会员框开关与游戏卡片管理", icon: "lock.fill", tone: DesignTokens.stone600) {
                 viewModel.myPanelScreen = .admin
             }
         }
@@ -158,6 +159,8 @@ struct MyPanelSheet: View {
                     .font(DesignTokens.bodyFont(size: 12))
                     .foregroundStyle(DesignTokens.stone600)
                 }
+
+                membershipBoxToggle
 
                 Text("游戏卡片管理")
                     .font(DesignTokens.titleFont(size: 17))
@@ -238,6 +241,45 @@ struct MyPanelSheet: View {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(DesignTokens.stone400.opacity(0.18), lineWidth: 1)
         }
+    }
+
+    private var membershipBoxToggle: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "crown.fill")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(DesignTokens.brandYellow)
+                .frame(width: 40, height: 40)
+                .background(DesignTokens.brandYellow.opacity(0.16))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("会员框显示")
+                    .font(DesignTokens.titleFont(size: 16))
+                    .foregroundStyle(DesignTokens.stone900)
+                Text("控制首页 PREMIUM 推广条")
+                    .font(DesignTokens.bodyFont(size: 11, weight: .semibold))
+                    .foregroundStyle(DesignTokens.stone500)
+            }
+            Spacer(minLength: 8)
+            Toggle(
+                "会员框显示",
+                isOn: Binding(
+                    get: { viewModel.membershipBoxEnabled },
+                    set: { viewModel.setMembershipBoxEnabled($0) }
+                )
+            )
+            .labelsHidden()
+            .tint(Color(red: 1.0, green: 0.35, blue: 0.28))
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color(red: 1.0, green: 0.35, blue: 0.28).opacity(0.35), lineWidth: 1.5)
+        }
+        .shadow(color: Color.black.opacity(0.06), radius: 8, y: 3)
     }
 
     private func circleButton(systemImage: String, action: @escaping () -> Void) -> some View {

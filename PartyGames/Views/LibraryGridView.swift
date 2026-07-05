@@ -24,6 +24,7 @@ struct LibraryGridView: View {
             }
             .padding(.horizontal, DesignTokens.pageHorizontalPadding)
             .padding(.vertical, 12)
+            .padding(.bottom, 12)
         }
         .creamBackground()
         .navigationTitle("游戏库")

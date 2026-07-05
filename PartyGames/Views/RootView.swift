@@ -6,67 +6,27 @@ public struct RootView: View {
     public init() {}
 
     public var body: some View {
-        Group {
-            switch viewModel.homeTab {
-            case .home:
+        TabView(selection: $viewModel.homeTab) {
+            Tab("首页", systemImage: "house.fill", value: HomeTab.home) {
                 NavigationStack {
                     HomeView(viewModel: viewModel)
                 }
-            case .library:
+            }
+
+            Tab("游戏库", systemImage: "gamecontroller.fill", value: HomeTab.library) {
                 NavigationStack {
                     LibraryGridView(viewModel: viewModel)
                 }
-            case .me:
+            }
+
+            Tab("我的", systemImage: "face.smiling", value: HomeTab.me) {
                 NavigationStack {
                     MyTabView(viewModel: viewModel)
                 }
             }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if viewModel.detailGame == nil {
-                customTabBar
-            }
-        }
-    }
-
-    private var customTabBar: some View {
-        HStack(spacing: 4) {
-            tabButton(.home, title: "首页", systemImage: "house.fill")
-            tabButton(.library, title: "游戏库", systemImage: "gamecontroller.fill")
-            tabButton(.me, title: "我的", systemImage: "face.smiling")
-        }
-        .padding(.horizontal, 12)
-        .padding(.top, 8)
-        .padding(.bottom, 6)
-        .frame(maxWidth: .infinity)
-        .background(Color.white.opacity(0.96))
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(DesignTokens.stone400.opacity(0.10))
-                .frame(height: 1)
-        }
-    }
-
-    private func tabButton(_ tab: HomeTab, title: String, systemImage: String) -> some View {
-        let selected = viewModel.homeTab == tab
-        return Button {
-            withAnimation(.easeOut(duration: 0.16)) {
-                viewModel.homeTab = tab
-            }
-        } label: {
-            VStack(spacing: 3) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(selected && tab == .home ? DesignTokens.brandYellow : (selected ? DesignTokens.stone900 : DesignTokens.stone400))
-                Text(title)
-                    .font(DesignTokens.bodyFont(size: 10))
-                    .foregroundStyle(selected ? DesignTokens.stone900 : DesignTokens.stone400)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 52)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
+        .tint(DesignTokens.brandYellow)
+        .tabBarMinimizeBehavior(.onScrollDown)
     }
 }
 
@@ -119,7 +79,7 @@ private struct MyTabView: View {
                     }
                     menuCard(
                         title: "管理者模式",
-                        subtitle: "查看游戏卡片与管理入口",
+                        subtitle: "会员框开关与游戏卡片管理",
                         systemImage: "lock.fill",
                         foreground: DesignTokens.stone600,
                         background: DesignTokens.stone400.opacity(0.18)
@@ -139,7 +99,7 @@ private struct MyTabView: View {
             }
             .padding(.horizontal, DesignTokens.pageHorizontalPadding)
             .padding(.top, 14)
-            .padding(.bottom, 28)
+            .padding(.bottom, 24)
         }
         .creamBackground()
         .toolbar(.hidden, for: .navigationBar)

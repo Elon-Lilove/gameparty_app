@@ -77,7 +77,7 @@ enum MoodCategory: String, Codable, CaseIterable, Sendable {
     }
 }
 
-enum HomeTab: String, CaseIterable, Sendable {
+enum HomeTab: String, CaseIterable, Hashable, Sendable {
     case home
     case library
     case me

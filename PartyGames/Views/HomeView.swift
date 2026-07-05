@@ -12,6 +12,7 @@ struct HomeView: View {
                 .frame(maxHeight: .infinity)
             actionBar
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .creamBackground()
         .sheet(isPresented: $viewModel.filterSheetOpen) {
             FilterSheet(viewModel: viewModel)
@@ -52,7 +53,7 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text("好友聚会")
-                        .font(DesignTokens.titleFont(size: 26))
+                        .font(DesignTokens.titleFont(size: 22))
                         .foregroundStyle(DesignTokens.stone900)
                     Image(systemName: "bolt.fill")
                         .font(.system(size: 15, weight: .bold))
@@ -157,26 +158,45 @@ struct HomeView: View {
                     .font(DesignTokens.bodyFont(size: 13))
                     .foregroundStyle(DesignTokens.stone500)
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.vertical, 48)
         } else if let featured = viewModel.featuredGame {
-            HomeCardStackView(
-                games: viewModel.filteredGames,
-                current: featured,
-                images: viewModel.gameImages,
-                isFavorite: viewModel.isFavorite(featured.id),
-                spinning: viewModel.isSpinning,
-                onToggleFavorite: { viewModel.toggleFavorite(featured.id) },
-                onOpen: { viewModel.openDetail(featured) },
-                onSwipeNext: { viewModel.moveSelection(1) },
-                onSwipePrev: { viewModel.moveSelection(-1) }
-            )
-            .padding(.horizontal, DesignTokens.pageHorizontalPadding)
+            GeometryReader { geo in
+                let topInset = DesignTokens.cardZoneTopInset
+                let bottomReserve = DesignTokens.cardBottomReserve
+                let availableHeight = geo.size.height - topInset - bottomReserve
+                let deckScale = DesignTokens.deckScale(
+                    zoneWidth: geo.size.width,
+                    availableHeight: availableHeight
+                )
+
+                HomeCardStackView(
+                    games: viewModel.filteredGames,
+                    current: featured,
+                    images: viewModel.gameImages,
+                    isFavorite: viewModel.isFavorite(featured.id),
+                    spinning: viewModel.isSpinning,
+                    onToggleFavorite: { viewModel.toggleFavorite(featured.id) },
+                    onOpen: { viewModel.openDetail(featured) },
+                    onSwipeNext: { viewModel.moveSelection(1) },
+                    onSwipePrev: { viewModel.moveSelection(-1) }
+                )
+                .scaleEffect(deckScale, anchor: .bottom)
+                .frame(
+                    width: DesignTokens.baselineWidth * deckScale,
+                    height: DesignTokens.stackMinHeight * deckScale,
+                    alignment: .bottom
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .padding(.top, topInset)
+                .padding(.bottom, bottomReserve)
+            }
+            .padding(.horizontal, -DesignTokens.pageHorizontalPadding)
         }
     }
 
     private var actionBar: some View {
-        HStack {
+        HStack(alignment: .bottom) {
             sideAction(title: "我的收藏", systemName: "bookmark") {
                 viewModel.openMyPanel(.favorites)
             }
@@ -192,9 +212,10 @@ struct HomeView: View {
                 viewModel.historySheetOpen = true
             }
         }
-        .frame(height: 90, alignment: .bottom)
+        .frame(height: DesignTokens.homeActionBarHeight, alignment: .bottom)
         .padding(.horizontal, 16)
-        .padding(.bottom, 2)
+        .padding(.top, 4)
+        .clipped()
     }
 
     private func iconButton(systemName: String, action: @escaping () -> Void) -> some View {
@@ -209,17 +230,17 @@ struct HomeView: View {
 
     private func sideAction(title: String, systemName: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 4) {
+            VStack(spacing: 5) {
                 Image(systemName: systemName)
                     .font(.system(size: 16, weight: .semibold))
                 Text(title)
-                    .font(DesignTokens.bodyFont(size: 11))
+                    .font(DesignTokens.bodyFont(size: DesignTokens.sideActionFontSize))
             }
             .foregroundStyle(DesignTokens.stone600)
-            .frame(width: 76, height: 52)
+            .frame(width: DesignTokens.sideActionWidth, height: DesignTokens.sideActionHeight)
             .background(.white)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .shadow(color: .black.opacity(0.07), radius: 10, y: 5)
+            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.sideActionCornerRadius, style: .continuous))
+            .shadow(color: .black.opacity(0.08), radius: 10, y: 5)
         }
         .buttonStyle(.plain)
     }

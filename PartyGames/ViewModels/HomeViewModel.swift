@@ -29,11 +29,13 @@ final class HomeViewModel {
 
     var promoPhase: PromoPhase = .visible
     var promoEndsAt: Date = Date().addingTimeInterval(TimeInterval(DesignTokens.promoCountdownSeconds))
+    var membershipBoxEnabled: Bool = SettingsStore.membershipBoxEnabled
 
     private var spinTask: Task<Void, Never>?
 
     init() {
         selectedGameId = games.first?.id
+        syncPromoWithMembershipSetting()
     }
 
     // MARK: - Filtering
@@ -146,9 +148,28 @@ final class HomeViewModel {
     }
 
     func expirePromo() {
+        guard membershipBoxEnabled else {
+            promoPhase = .hidden
+            return
+        }
         promoPhase = .closing
         Task {
             try? await Task.sleep(for: .seconds(DesignTokens.promoCollapseMs))
+            promoPhase = .hidden
+        }
+    }
+
+    func setMembershipBoxEnabled(_ enabled: Bool) {
+        membershipBoxEnabled = enabled
+        SettingsStore.membershipBoxEnabled = enabled
+        syncPromoWithMembershipSetting()
+    }
+
+    private func syncPromoWithMembershipSetting() {
+        if membershipBoxEnabled {
+            promoPhase = .visible
+            promoEndsAt = Date().addingTimeInterval(TimeInterval(DesignTokens.promoCountdownSeconds))
+        } else {
             promoPhase = .hidden
         }
     }

@@ -17,7 +17,7 @@ struct MoodFilterBar: View {
                         HStack(spacing: 5) {
                             Text(mood.emoji)
                             Text(mood.label)
-                                .font(DesignTokens.bodyFont(size: 12))
+                                .font(DesignTokens.bodyFont(size: 13))
                         }
                         .foregroundStyle(selection == mood ? DesignTokens.stone900 : DesignTokens.stone500)
                         .padding(.horizontal, 11)
