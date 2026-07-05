@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 public struct RootView: View {
     @State private var viewModel = HomeViewModel()
@@ -27,11 +26,6 @@ public struct RootView: View {
             if viewModel.detailGame == nil {
                 customTabBar
             }
-        }
-        .onAppear {
-            #if DEBUG
-            NSLog("PartyGames screen bounds: %@ safe area: %@", NSCoder.string(for: UIScreen.main.bounds), NSCoder.string(for: UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow?.safeAreaInsets }.first ?? .zero))
-            #endif
         }
     }
 
