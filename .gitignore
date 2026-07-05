@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Xcode user-specific data and build output
+DerivedData/
+build/
+xcuserdata/
+*.xcuserstate
+
+# Local environment files
+.env
+.env.*
+!.env.example
