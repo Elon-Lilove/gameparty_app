@@ -4,54 +4,107 @@ struct DiceSpinButton: View {
     var spinning: Bool
     var disabled: Bool
     var diceFace: Int
-    var onTap: () -> Void
+    var onPressStart: () -> Void
+    var onRelease: (SpinMomentum) -> Void
+
+    @State private var momentumAnchor: CGPoint?
+    @State private var momentumWindowStart: Date?
+    @State private var didBeginPress = false
 
     var body: some View {
         VStack(spacing: 6) {
-            Button(action: onTap) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [DesignTokens.actionOrange, DesignTokens.actionCoral, DesignTokens.actionPink],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: DesignTokens.diceGlowDiameter, height: DesignTokens.diceGlowDiameter)
-                        .shadow(color: DesignTokens.actionCoral.opacity(0.25), radius: 10, y: 5)
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [.white, Color(red: 1, green: 0.95, blue: 0.91)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: DesignTokens.diceButtonDiameter, height: DesignTokens.diceButtonDiameter)
-                    DiceFaceView(value: spinning ? diceFace + 1 : 5)
-                        .frame(width: DesignTokens.diceFaceSize, height: DesignTokens.diceFaceSize)
-                        .background(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .stroke(Color.orange.opacity(0.25), lineWidth: 1)
-                        }
-                        .shadow(color: Color.orange.opacity(0.20), radius: 5, y: 3)
-                        .rotationEffect(.degrees(-8))
-                }
-                    .scaleEffect(spinning ? 1.06 : 1)
-                    .rotationEffect(.degrees(spinning ? 8 : 0))
-                    .animation(spinning ? .easeInOut(duration: 0.12).repeatForever(autoreverses: true) : .default, value: spinning)
-            }
-            .buttonStyle(.plain)
-            .disabled(disabled)
-
+            diceControl
             Text("随机一局")
                 .font(DesignTokens.bodyFont(size: 11))
                 .foregroundStyle(DesignTokens.stone500)
         }
-        .frame(height: 88, alignment: .bottom)
+        .frame(height: 88, alignment: .top)
+    }
+
+    private var diceControl: some View {
+        ZStack {
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [DesignTokens.actionOrange, DesignTokens.actionCoral, DesignTokens.actionPink],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: DesignTokens.diceGlowDiameter, height: DesignTokens.diceGlowDiameter)
+                .shadow(color: DesignTokens.actionCoral.opacity(0.25), radius: 10, y: 5)
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [.white, Color(red: 1, green: 0.95, blue: 0.91)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: DesignTokens.diceButtonDiameter, height: DesignTokens.diceButtonDiameter)
+            DiceFaceView(value: spinning ? diceFace + 1 : 5)
+                .frame(width: DesignTokens.diceFaceSize, height: DesignTokens.diceFaceSize)
+                .background(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(Color.orange.opacity(0.25), lineWidth: 1)
+                }
+                .shadow(color: Color.orange.opacity(0.20), radius: 5, y: 3)
+                .rotationEffect(.degrees(-8))
+        }
+        .scaleEffect(spinning ? 1.06 : 1)
+        .rotationEffect(.degrees(spinning ? 8 : 0))
+        .animation(spinning ? .easeInOut(duration: 0.12).repeatForever(autoreverses: true) : .default, value: spinning)
+        .frame(width: DesignTokens.diceGlowDiameter, height: DesignTokens.diceGlowDiameter)
+        .contentShape(Circle())
+        .opacity(disabled ? 0.55 : 1)
+        .allowsHitTesting(!disabled)
+        .gesture(spinGesture)
+    }
+
+    private var spinGesture: some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .global)
+            .onChanged { value in
+                let now = Date()
+                if momentumAnchor == nil {
+                    momentumAnchor = value.startLocation
+                    momentumWindowStart = now
+                    if !didBeginPress {
+                        didBeginPress = true
+                        onPressStart()
+                    }
+                }
+
+                if let windowStart = momentumWindowStart,
+                   now.timeIntervalSince(windowStart) * 1000 > DesignTokens.spinMomentumTimeThresholdMs {
+                    momentumWindowStart = now
+                    momentumAnchor = value.location
+                }
+            }
+            .onEnded { value in
+                defer {
+                    momentumAnchor = nil
+                    momentumWindowStart = nil
+                    didBeginPress = false
+                }
+                guard !disabled else { return }
+
+                let anchor = momentumAnchor ?? value.startLocation
+                let windowDistance = hypot(
+                    value.location.x - anchor.x,
+                    value.location.y - anchor.y
+                )
+                let windowDurationMs = CGFloat(
+                    (momentumWindowStart.map { Date().timeIntervalSince($0) } ?? 0) * 1000
+                )
+                let momentum = SpinMomentum.fromRelease(
+                    windowDistance: windowDistance,
+                    windowDurationMs: max(1, windowDurationMs),
+                    releaseVelocity: value.velocity
+                )
+                onRelease(momentum)
+            }
     }
 }
 

@@ -2,13 +2,12 @@ import SwiftUI
 
 struct HomeView: View {
     @Bindable var viewModel: HomeViewModel
-    @State private var promoRemaining = DesignTokens.promoCountdownSeconds
-    @State private var promoTask: Task<Void, Never>?
 
     var body: some View {
         VStack(spacing: 0) {
             homeHeader
             cardZone
+                .padding(.top, DesignTokens.cardZoneTopInset)
                 .frame(maxHeight: .infinity)
             actionBar
         }
@@ -25,10 +24,6 @@ struct HomeView: View {
         .sheet(isPresented: $viewModel.myPanelOpen) {
             MyPanelSheet(viewModel: viewModel)
         }
-        .onAppear(perform: startPromoTimer)
-        .onDisappear {
-            promoTask?.cancel()
-        }
         .navigationDestination(item: $viewModel.detailGame) { game in
             GameDetailView(game: game, viewModel: viewModel)
                 .toolbar(.hidden, for: .tabBar)
@@ -36,28 +31,22 @@ struct HomeView: View {
     }
 
     private var homeHeader: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 4) {
             header
             MoodFilterBar(selection: $viewModel.moodFilter) { mood in
                 viewModel.setMoodFilter(mood)
             }
-            recommendLine
-            promoBanner
         }
         .padding(.top, 4)
-        .padding(.bottom, 2)
     }
 
     private var header: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text("好友聚会")
+                    Text("多玩聚会")
                         .font(DesignTokens.titleFont(size: 22))
                         .foregroundStyle(DesignTokens.stone900)
-                    Image(systemName: "bolt.fill")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(DesignTokens.brandYellow)
                 }
                 Text("让聚会更有趣")
                     .font(DesignTokens.bodyFont(size: 12))
@@ -76,76 +65,11 @@ struct HomeView: View {
                         .frame(width: 19, height: 19)
                         .frame(width: 36, height: 36)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.hapticPlain)
             }
         }
         .padding(.horizontal, DesignTokens.pageHorizontalPadding)
         .padding(.top, 8)
-    }
-
-    private var recommendLine: some View {
-        (
-            Text("已为你推荐适合 ")
-                .foregroundStyle(DesignTokens.stone400)
-            + Text(viewModel.recommendPlayerLabel)
-                .foregroundStyle(DesignTokens.stone900)
-                .fontWeight(.black)
-            + Text(" 人的游戏")
-                .foregroundStyle(DesignTokens.stone400)
-        )
-        .font(DesignTokens.bodyFont(size: 12))
-        .frame(maxWidth: .infinity)
-    }
-
-    @ViewBuilder
-    private var promoBanner: some View {
-        if viewModel.promoPhase != .hidden {
-            HStack(spacing: 10) {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Text("PREMIUM")
-                            .font(DesignTokens.bodyFont(size: 10))
-                            .foregroundStyle(.orange)
-                        Text("解锁更多游戏")
-                            .font(DesignTokens.bodyFont(size: 13))
-                            .foregroundStyle(DesignTokens.stone900)
-                    }
-                    Text("限时81% off")
-                        .font(DesignTokens.bodyFont(size: 11))
-                        .foregroundStyle(DesignTokens.stone500)
-                }
-                Spacer()
-                Button {
-                    viewModel.homeTab = .library
-                } label: {
-                    VStack(spacing: 2) {
-                        Text("立即获取")
-                            .font(DesignTokens.bodyFont(size: 12))
-                        Text(formatCountdown(promoRemaining))
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
-                            .foregroundStyle(.orange)
-                    }
-                    .foregroundStyle(DesignTokens.stone900)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                    .background(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(DesignTokens.stone400.opacity(0.25), lineWidth: 1)
-                    }
-                }
-                .buttonStyle(.plain)
-                .disabled(viewModel.promoPhase != .visible)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Color(white: 0.96))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .padding(.horizontal, DesignTokens.pageHorizontalPadding)
-            .opacity(viewModel.promoPhase == .closing ? 0 : 1)
-            .animation(.easeOut(duration: DesignTokens.promoCollapseMs), value: viewModel.promoPhase)
-        }
     }
 
     @ViewBuilder
@@ -162,33 +86,32 @@ struct HomeView: View {
             .padding(.vertical, 48)
         } else if let featured = viewModel.featuredGame {
             GeometryReader { geo in
-                let topInset = DesignTokens.cardZoneTopInset
                 let bottomReserve = DesignTokens.cardBottomReserve
-                let availableHeight = geo.size.height - topInset - bottomReserve
+                let availableHeight = max(0, geo.size.height - bottomReserve)
                 let deckScale = DesignTokens.deckScale(
                     zoneWidth: geo.size.width,
                     availableHeight: availableHeight
                 )
+                let scaledStackHeight = DesignTokens.stackMinHeight * deckScale
 
                 HomeCardStackView(
                     games: viewModel.filteredGames,
                     current: featured,
                     images: viewModel.gameImages,
-                    isFavorite: viewModel.isFavorite(featured.id),
+                    isFavorite: { viewModel.isFavorite($0) },
                     spinning: viewModel.isSpinning,
-                    onToggleFavorite: { viewModel.toggleFavorite(featured.id) },
+                    spinPhase: viewModel.spinPhase,
+                    spinProgress: viewModel.spinProgress,
+                    deckScale: deckScale,
+                    onToggleFavorite: { viewModel.toggleFavorite($0) },
                     onOpen: { viewModel.openDetail(featured) },
                     onSwipeNext: { viewModel.moveSelection(1) },
                     onSwipePrev: { viewModel.moveSelection(-1) }
                 )
-                .scaleEffect(deckScale, anchor: .bottom)
-                .frame(
-                    width: DesignTokens.baselineWidth * deckScale,
-                    height: DesignTokens.stackMinHeight * deckScale,
-                    alignment: .bottom
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                .padding(.top, topInset)
+                .frame(width: geo.size.width, height: DesignTokens.stackMinHeight, alignment: .top)
+                .scaleEffect(deckScale, anchor: .top)
+                .frame(width: geo.size.width, height: scaledStackHeight, alignment: .top)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .padding(.bottom, bottomReserve)
             }
             .padding(.horizontal, -DesignTokens.pageHorizontalPadding)
@@ -196,23 +119,29 @@ struct HomeView: View {
     }
 
     private var actionBar: some View {
-        HStack(alignment: .bottom) {
-            sideAction(title: "我的收藏", systemName: "bookmark") {
-                viewModel.openMyPanel(.favorites)
+        ZStack(alignment: .top) {
+            HStack {
+                sideAction(title: "我的收藏", systemName: "bookmark") {
+                    viewModel.openMyPanel(.favorites)
+                }
+                Spacer()
+                sideAction(title: "历史记录", systemName: "clock") {
+                    viewModel.historySheetOpen = true
+                }
             }
-            Spacer()
+            .frame(maxWidth: .infinity)
+            .frame(height: DesignTokens.diceGlowDiameter, alignment: .center)
+
             DiceSpinButton(
                 spinning: viewModel.isSpinning,
                 disabled: viewModel.isSpinning || viewModel.filteredGames.isEmpty,
                 diceFace: viewModel.diceFace,
-                onTap: viewModel.runSpin
+                onPressStart: { HapticService.light() },
+                onRelease: { _ in viewModel.runSpin() }
             )
-            Spacer()
-            sideAction(title: "历史记录", systemName: "clock") {
-                viewModel.historySheetOpen = true
-            }
         }
-        .frame(height: DesignTokens.homeActionBarHeight, alignment: .bottom)
+        .frame(maxWidth: .infinity)
+        .frame(height: DesignTokens.homeActionBarHeight, alignment: .top)
         .padding(.horizontal, 16)
         .padding(.top, 4)
         .clipped()
@@ -225,12 +154,12 @@ struct HomeView: View {
                 .foregroundStyle(DesignTokens.stone500)
                 .frame(width: 36, height: 36)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hapticPlain)
     }
 
     private func sideAction(title: String, systemName: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 5) {
+            HStack(spacing: 7) {
                 Image(systemName: systemName)
                     .font(.system(size: 16, weight: .semibold))
                 Text(title)
@@ -238,34 +167,13 @@ struct HomeView: View {
             }
             .foregroundStyle(DesignTokens.stone600)
             .frame(width: DesignTokens.sideActionWidth, height: DesignTokens.sideActionHeight)
-            .background(.white)
+            .background(DesignTokens.surfaceElevated)
             .clipShape(RoundedRectangle(cornerRadius: DesignTokens.sideActionCornerRadius, style: .continuous))
             .shadow(color: .black.opacity(0.08), radius: 10, y: 5)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hapticPlain)
     }
 
-    private func startPromoTimer() {
-        guard viewModel.promoPhase == .visible else { return }
-        promoTask?.cancel()
-        promoTask = Task { @MainActor in
-            while !Task.isCancelled, viewModel.promoPhase == .visible {
-                promoRemaining = max(0, Int(ceil(viewModel.promoEndsAt.timeIntervalSinceNow)))
-                if promoRemaining <= 0 {
-                    viewModel.expirePromo()
-                    return
-                }
-                try? await Task.sleep(for: .seconds(1))
-            }
-        }
-    }
-
-    private func formatCountdown(_ seconds: Int) -> String {
-        let h = seconds / 3600
-        let m = (seconds % 3600) / 60
-        let s = seconds % 60
-        return String(format: "%02d:%02d:%02d", h, m, s)
-    }
 }
 
 private struct FunnelIcon: Shape {

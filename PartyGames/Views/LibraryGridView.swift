@@ -36,6 +36,7 @@ struct LibraryGridView: View {
                 } label: {
                     Image(systemName: "line.3.horizontal.decrease")
                 }
+                .buttonStyle(.hapticPlain)
             }
         }
         .sheet(isPresented: $viewModel.filterSheetOpen) {
@@ -72,7 +73,7 @@ private struct LibraryGameCard: View {
                         Image(systemName: isFavorite ? "heart.fill" : "heart")
                             .foregroundStyle(isFavorite ? .pink : palette.title.opacity(0.5))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.hapticPlain)
                 }
                 ZStack {
                     if let image {
@@ -100,6 +101,6 @@ private struct LibraryGameCard: View {
             .background(palette.backgroundGradient)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hapticPlain)
     }
 }

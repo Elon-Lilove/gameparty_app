@@ -6,7 +6,7 @@ public struct RootView: View {
     public init() {}
 
     public var body: some View {
-        TabView(selection: $viewModel.homeTab) {
+        TabView(selection: tabSelection) {
             Tab("首页", systemImage: "house.fill", value: HomeTab.home) {
                 NavigationStack {
                     HomeView(viewModel: viewModel)
@@ -19,14 +19,31 @@ public struct RootView: View {
                 }
             }
 
+            Tab("工具", systemImage: "wrench.and.screwdriver.fill", value: HomeTab.tools) {
+                NavigationStack {
+                    ToolsTabView()
+                }
+            }
+
             Tab("我的", systemImage: "face.smiling", value: HomeTab.me) {
                 NavigationStack {
                     MyTabView(viewModel: viewModel)
                 }
             }
         }
-        .tint(DesignTokens.brandYellow)
+        .tint(DesignTokens.tabAccent)
         .tabBarMinimizeBehavior(.onScrollDown)
+    }
+
+    private var tabSelection: Binding<HomeTab> {
+        Binding(
+            get: { viewModel.homeTab },
+            set: { newTab in
+                guard newTab != viewModel.homeTab else { return }
+                viewModel.homeTab = newTab
+                HapticService.medium()
+            }
+        )
     }
 }
 
@@ -44,7 +61,7 @@ private struct MyTabView: View {
                     Text("我的")
                         .font(DesignTokens.titleFont(size: 30))
                         .foregroundStyle(DesignTokens.stone900)
-                    Text("收藏常玩的游戏，随时打开聚会小工具。")
+                    Text("收藏常玩的游戏，或进入管理者模式。")
                         .font(DesignTokens.bodyFont(size: 13, weight: .semibold))
                         .foregroundStyle(DesignTokens.stone500)
                 }
@@ -60,26 +77,8 @@ private struct MyTabView: View {
                         viewModel.openMyPanel(.favorites)
                     }
                     menuCard(
-                        title: "计分器",
-                        subtitle: "记录玩家得分",
-                        systemImage: "trophy.fill",
-                        foreground: Color(red: 0.72, green: 0.47, blue: 0.08),
-                        background: Color.orange.opacity(0.13)
-                    ) {
-                        viewModel.openMyPanel(.scorekeeper)
-                    }
-                    menuCard(
-                        title: "骰子",
-                        subtitle: "随机掷出 1-6 点",
-                        systemImage: "dice.fill",
-                        foreground: .purple,
-                        background: Color.purple.opacity(0.12)
-                    ) {
-                        viewModel.openMyPanel(.dice)
-                    }
-                    menuCard(
                         title: "管理者模式",
-                        subtitle: "会员框开关与游戏卡片管理",
+                        subtitle: "管理游戏卡片",
                         systemImage: "lock.fill",
                         foreground: DesignTokens.stone600,
                         background: DesignTokens.stone400.opacity(0.18)
@@ -149,14 +148,14 @@ private struct MyTabView: View {
             }
             .padding(15)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.white.opacity(0.82))
+            .background(DesignTokens.surfaceElevatedSoft)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(DesignTokens.stone400.opacity(0.18), lineWidth: 1)
+                    .stroke(DesignTokens.borderSubtle, lineWidth: 1)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hapticPlain)
     }
 
     private func compactAction(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
@@ -166,9 +165,9 @@ private struct MyTabView: View {
                 .foregroundStyle(DesignTokens.stone600)
                 .frame(maxWidth: .infinity)
                 .frame(minHeight: 48)
-                .background(Color.white.opacity(0.65))
+                .background(DesignTokens.surfaceElevatedSoft)
                 .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hapticPlain)
     }
 }

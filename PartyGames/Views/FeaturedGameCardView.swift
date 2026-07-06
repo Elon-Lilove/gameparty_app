@@ -5,9 +5,17 @@ struct FeaturedGameCardView: View {
     let palette: GameHeaderPalette
     var image: UIImage?
     var isFavorite: Bool
+    /// 0 = side peek at rest, 1 = full main card. Drives footer/shadow reveal during promote.
+    var promoteProgress: CGFloat = 1
     var spinning: Bool = false
     var onToggleFavorite: () -> Void
     var onStart: () -> Void
+
+    private var detailReveal: CGFloat {
+        let phaseEnd = DesignTokens.peekPositionPhaseEnd
+        guard promoteProgress > phaseEnd else { return 0 }
+        return min(1, (promoteProgress - phaseEnd) / (1 - phaseEnd))
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -15,21 +23,27 @@ struct FeaturedGameCardView: View {
                 game: game,
                 palette: palette,
                 image: image,
-                showsFavorite: true,
+                showsFavorite: promoteProgress > DesignTokens.peekPositionPhaseEnd,
                 isFavorite: isFavorite,
                 onToggleFavorite: onToggleFavorite
             )
             statsRow
+                .opacity(detailReveal)
             startButton
+                .opacity(detailReveal)
         }
         .padding(.horizontal, 16)
         .padding(.top, 18)
         .padding(.bottom, 16)
         .frame(width: DesignTokens.cardWidth)
         .aspectRatio(DesignTokens.cardAspectRatio, contentMode: .fit)
-        .background(Color.white)
+        .background(palette.backgroundGradient)
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.cardCornerRadius, style: .continuous))
-        .shadow(color: DesignTokens.actionPink.opacity(0.08), radius: 22, y: 10)
+        .shadow(
+            color: DesignTokens.actionPink.opacity(0.08 * detailReveal),
+            radius: 22,
+            y: 10
+        )
         .opacity(spinning ? 0.92 : 1)
         .scaleEffect(spinning ? 0.985 : 1)
         .animation(.easeInOut(duration: 0.2), value: spinning)
@@ -78,7 +92,7 @@ struct FeaturedGameCardView: View {
             .clipShape(Capsule())
             .shadow(color: DesignTokens.actionPink.opacity(0.18), radius: 10, y: 5)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hapticPlain)
         .padding(.top, 12)
     }
 }

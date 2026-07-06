@@ -4,7 +4,8 @@ import SwiftUI
 struct GameCardTopSection: View {
     enum Layout {
         case main
-        case peek(visibleWidth: CGFloat, side: HorizontalAlignment)
+        /// Full card content; outer clipping reveals the side strip when covered by the main card.
+        case peek
     }
 
     let game: Game
@@ -25,10 +26,8 @@ struct GameCardTopSection: View {
 
     var body: some View {
         switch layout {
-        case .main:
+        case .main, .peek:
             mainBody
-        case let .peek(visibleWidth, side):
-            peekBody(visibleWidth: visibleWidth, side: side)
         }
     }
 
@@ -40,39 +39,16 @@ struct GameCardTopSection: View {
         }
     }
 
-    private func peekBody(visibleWidth: CGFloat, side: HorizontalAlignment) -> some View {
-        VStack(alignment: side, spacing: 0) {
-            peekTitleHeader(visibleWidth: visibleWidth, side: side)
-
-            Text(descriptionText)
-                .font(DesignTokens.bodyFont(size: DesignTokens.cardDescSize))
-                .foregroundStyle(DesignTokens.stone600.opacity(0.88))
-                .lineLimit(2)
-                .multilineTextAlignment(side == .leading ? .leading : .trailing)
-                .frame(width: visibleWidth, alignment: side == .leading ? .leading : .trailing)
-                .padding(.top, 6)
-
-            peekArtArea(visibleWidth: visibleWidth, side: side)
-        }
-        .frame(maxWidth: .infinity, alignment: side == .leading ? .leading : .trailing)
-    }
-
-    private func peekTitleHeader(visibleWidth: CGFloat, side: HorizontalAlignment) -> some View {
-        Text(game.name)
-            .font(DesignTokens.titleFont(size: DesignTokens.cardTitleSize))
-            .foregroundStyle(DesignTokens.stone900)
-            .lineLimit(1)
-            .truncationMode(.tail)
-            .frame(width: visibleWidth, alignment: side == .leading ? .leading : .trailing)
-            .frame(maxWidth: .infinity, alignment: side == .leading ? .leading : .trailing)
-            .frame(height: DesignTokens.cardHeaderHeight, alignment: .top)
+    private var titleFontSize: CGFloat {
+        DesignTokens.cardTitleSize
     }
 
     private var titleText: some View {
         Text(game.name)
-            .font(DesignTokens.titleFont(size: DesignTokens.cardTitleSize))
+            .font(DesignTokens.titleFont(size: titleFontSize))
             .foregroundStyle(DesignTokens.stone900)
-            .lineLimit(1)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var header: some View {
@@ -88,18 +64,19 @@ struct GameCardTopSection: View {
                     .clipShape(Capsule())
             }
             .frame(maxWidth: .infinity)
+            .padding(.horizontal, showsFavorite ? 28 : 0)
 
             if showsFavorite, let onToggleFavorite {
                 Button(action: onToggleFavorite) {
                     Image(systemName: isFavorite ? "star.fill" : "star")
                         .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(isFavorite ? DesignTokens.brandYellow : Color(white: 0.82))
+                        .foregroundStyle(isFavorite ? DesignTokens.brandYellow : DesignTokens.stone400)
                         .frame(width: 32, height: 32)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.hapticPlain)
             }
         }
-        .frame(height: DesignTokens.cardHeaderHeight)
+        .frame(minHeight: DesignTokens.cardHeaderHeight, alignment: .top)
     }
 
     private var description: some View {
@@ -120,19 +97,6 @@ struct GameCardTopSection: View {
                 RoundedRectangle(cornerRadius: DesignTokens.artCornerRadius, style: .continuous)
                     .stroke(Color.white.opacity(0.35), lineWidth: 1)
             }
-            .padding(.top, 10)
-    }
-
-    private func peekArtArea(visibleWidth: CGFloat, side: HorizontalAlignment) -> some View {
-        artContent
-            .frame(width: DesignTokens.artWidth, height: DesignTokens.artHeight)
-            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.artCornerRadius, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: DesignTokens.artCornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(0.35), lineWidth: 1)
-            }
-            .frame(width: visibleWidth, alignment: side == .leading ? .leading : .trailing)
-            .clipped()
             .padding(.top, 10)
     }
 

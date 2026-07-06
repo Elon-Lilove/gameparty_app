@@ -24,18 +24,14 @@ final class HomeViewModel {
     var myPanelScreen: MyPanelScreen = .menu
 
     var spinPhase: SpinPhase = .idle
+    var spinProgress: Double = 0
     var diceFace: Int = 0
     var deckOffset: Int = 0
-
-    var promoPhase: PromoPhase = .visible
-    var promoEndsAt: Date = Date().addingTimeInterval(TimeInterval(DesignTokens.promoCountdownSeconds))
-    var membershipBoxEnabled: Bool = SettingsStore.membershipBoxEnabled
 
     private var spinTask: Task<Void, Never>?
 
     init() {
         selectedGameId = games.first?.id
-        syncPromoWithMembershipSetting()
     }
 
     // MARK: - Filtering
@@ -82,7 +78,6 @@ final class HomeViewModel {
 
     func toggleFavorite(_ gameId: String) {
         FavoritesStore.toggle(gameId, in: &favoriteIds)
-        HapticService.light()
     }
 
     func isFavorite(_ gameId: String) -> Bool {
@@ -95,14 +90,12 @@ final class HomeViewModel {
         let next = (current + direction + filteredGames.count) % filteredGames.count
         deckOffset = 0
         selectedGameId = filteredGames[next].id
-        HapticService.light()
     }
 
     func selectGame(_ game: Game) {
         guard spinPhase == .idle, !filteredGames.isEmpty else { return }
         deckOffset = 0
         selectedGameId = game.id
-        HapticService.light()
     }
 
     func openDetail(_ game: Game) {
@@ -133,7 +126,11 @@ final class HomeViewModel {
     }
 
     func setMoodFilter(_ mood: MoodCategory) {
-        moodFilter = mood
+        if moodFilter == mood, mood != .all {
+            moodFilter = .all
+        } else {
+            moodFilter = mood
+        }
         syncSelectionAfterFilterChange()
     }
 
@@ -147,34 +144,11 @@ final class HomeViewModel {
         syncSelectionAfterFilterChange()
     }
 
-    func expirePromo() {
-        guard membershipBoxEnabled else {
-            promoPhase = .hidden
-            return
-        }
-        promoPhase = .closing
-        Task {
-            try? await Task.sleep(for: .seconds(DesignTokens.promoCollapseMs))
-            promoPhase = .hidden
-        }
-    }
-
-    func setMembershipBoxEnabled(_ enabled: Bool) {
-        membershipBoxEnabled = enabled
-        SettingsStore.membershipBoxEnabled = enabled
-        syncPromoWithMembershipSetting()
-    }
-
-    private func syncPromoWithMembershipSetting() {
-        if membershipBoxEnabled {
-            promoPhase = .visible
-            promoEndsAt = Date().addingTimeInterval(TimeInterval(DesignTokens.promoCountdownSeconds))
-        } else {
-            promoPhase = .hidden
-        }
-    }
-
     func runSpin() {
+        runSpin(momentum: .tapInertia, totalDurationMs: DesignTokens.spinTapDurationMs)
+    }
+
+    func runSpin(momentum: SpinMomentum, totalDurationMs: Double? = nil) {
         guard spinPhase == .idle, !filteredGames.isEmpty else { return }
         spinTask?.cancel()
 
@@ -182,10 +156,15 @@ final class HomeViewModel {
         let safeCurrent = currentIndex
         let targetIndex = count == 1 ? safeCurrent : (safeCurrent + 1) % count
         let stepsToTarget = count == 1 ? 0 : ((targetIndex - safeCurrent + count) % count)
-        let totalSteps = count == 1 ? 0 : count + stepsToTarget
+        let extraRevolutions = momentum.extraRevolutions
+        let totalSteps = count == 1 ? 0 : (extraRevolutions * count) + count + stepsToTarget
+        let spinTotalMs = totalDurationMs ?? momentum.spinDurationMs
+        let settleMs = DesignTokens.spinSettleMs
+        let motionEndMs = max(DesignTokens.spinSoftStartMs, spinTotalMs - settleMs)
 
         HapticService.medium()
         deckOffset = 0
+        spinProgress = 0
         spinPhase = .press
         diceFace = 0
 
@@ -196,10 +175,11 @@ final class HomeViewModel {
             while !Task.isCancelled {
                 let elapsedMs = Date().timeIntervalSince(start) * 1000
 
-                if elapsedMs >= DesignTokens.spinDurationMs {
+                if elapsedMs >= spinTotalMs {
                     selectedGameId = filteredGames[targetIndex].id
                     deckOffset = 0
                     spinPhase = .idle
+                    spinProgress = 0
                     diceFace = 0
                     if let picked = filteredGames[safeIndex: targetIndex] {
                         HistoryStore.prepend(picked.id, to: &historyIds)
@@ -214,11 +194,19 @@ final class HomeViewModel {
                     spinPhase = .press
                 } else if elapsedMs < DesignTokens.spinSoftStartMs {
                     spinPhase = .accelerate
+                    spinProgress = 0.08
+                } else if elapsedMs >= motionEndMs {
+                    if totalSteps > 0, lastStep != totalSteps {
+                        lastStep = totalSteps
+                        deckOffset = totalSteps
+                    }
+                    spinPhase = .settle
+                    spinProgress = 1
                 } else {
-                    let motionSpan = max(1, DesignTokens.spinDurationMs - DesignTokens.spinSoftStartMs)
+                    let motionSpan = max(1, motionEndMs - DesignTokens.spinSoftStartMs)
                     let motionElapsed = elapsedMs - DesignTokens.spinSoftStartMs
                     let t = min(1, motionElapsed / motionSpan)
-                    let eased = 1 - pow(1 - t, 4)
+                    let eased = CubicBezierTiming.spinProgress(at: t)
                     let step = totalSteps > 0
                         ? min(totalSteps, Int(floor(eased * Double(totalSteps + 1))))
                         : 0
@@ -226,7 +214,8 @@ final class HomeViewModel {
                         lastStep = step
                         deckOffset = step
                     }
-                    spinPhase = spinMotionPhase(progress: totalSteps > 0 ? Double(step) / Double(totalSteps) : eased)
+                    spinProgress = totalSteps > 0 ? Double(step) / Double(totalSteps) : eased
+                    spinPhase = spinMotionPhase(progress: spinProgress)
                 }
 
                 try? await Task.sleep(for: .milliseconds(16))

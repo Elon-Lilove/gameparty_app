@@ -16,3 +16,6 @@ xcuserdata/
 .env
 .env.*
 !.env.example
+
+# Local Codex working files
+.codex-work/

@@ -34,6 +34,7 @@ struct HistorySheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("关闭") { dismiss() }
+                        .buttonStyle(.hapticPlain)
                 }
             }
         }

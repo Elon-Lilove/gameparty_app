@@ -4,7 +4,6 @@ struct GameDetailView: View {
     let game: Game
     @Bindable var viewModel: HomeViewModel
     @StateObject private var speechService = SpeechService()
-    @Environment(\.dismiss) private var dismiss
 
     private var palette: GameHeaderPalette {
         GameHeaderPalettes.palette(forGameID: game.id, in: viewModel.games)
@@ -28,20 +27,9 @@ struct GameDetailView: View {
         }
         .creamBackground()
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    speechService.stop()
-                    viewModel.closeDetail()
-                    dismiss()
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 16, weight: .bold))
-                }
-            }
-        }
         .onDisappear {
             speechService.stop()
+            viewModel.closeDetail()
         }
     }
 
@@ -64,7 +52,7 @@ struct GameDetailView: View {
                         .foregroundStyle(viewModel.isFavorite(game.id) ? .pink : palette.title.opacity(0.55))
                         .frame(width: 40, height: 40)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.hapticPlain)
             }
 
             HStack(alignment: .top, spacing: 14) {
@@ -127,7 +115,7 @@ struct GameDetailView: View {
                 }
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.white.opacity(0.72))
+                .background(DesignTokens.surfaceElevatedSoft)
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             }
         }
@@ -149,13 +137,13 @@ struct GameDetailView: View {
                         Text(speechService.isPlaying ? "结束" : (game.startButtonLabel ?? "开始游戏"))
                             .font(DesignTokens.bodyFont(size: 13))
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(DesignTokens.inverseText)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
-                    .background(DesignTokens.stone900)
+                    .background(DesignTokens.inverseSurface)
                     .clipShape(Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.hapticPlain)
             }
 
             ForEach(Array(game.rules.enumerated()), id: \.offset) { index, rule in
@@ -163,11 +151,11 @@ struct GameDetailView: View {
                     && speechService.currentSentenceIndex - 1 == index
                 Text("\(index + 1). \(rule)")
                     .font(DesignTokens.bodyFont(size: 15, weight: .bold))
-                    .foregroundStyle(highlighted ? .white : DesignTokens.stone600)
+                    .foregroundStyle(highlighted ? DesignTokens.inverseText : DesignTokens.stone600)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
-                    .background(highlighted ? DesignTokens.stone900 : Color.white.opacity(0.72))
+                    .background(highlighted ? DesignTokens.inverseSurface : DesignTokens.surfaceElevatedSoft)
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     .shadow(color: .black.opacity(highlighted ? 0.12 : 0.04), radius: highlighted ? 8 : 4, y: 2)
                     .animation(.easeInOut(duration: 0.2), value: speechService.currentSentenceIndex)

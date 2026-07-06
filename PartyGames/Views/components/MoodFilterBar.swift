@@ -22,7 +22,7 @@ struct MoodFilterBar: View {
                         .foregroundStyle(selection == mood ? DesignTokens.stone900 : DesignTokens.stone500)
                         .padding(.horizontal, 11)
                         .padding(.vertical, 7)
-                        .background(selection == mood ? DesignTokens.moodActiveBackground : .white)
+                        .background(selection == mood ? DesignTokens.moodActiveBackground : DesignTokens.surfaceElevated)
                         .overlay {
                             Capsule()
                                 .stroke(selection == mood ? DesignTokens.moodActiveBorder : Color.clear, lineWidth: 1.5)

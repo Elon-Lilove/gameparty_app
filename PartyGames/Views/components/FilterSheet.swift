@@ -38,6 +38,7 @@ struct FilterSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("完成") { dismiss() }
+                        .buttonStyle(.hapticPlain)
                 }
             }
         }

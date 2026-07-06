@@ -20,10 +20,6 @@ struct MyPanelSheet: View {
                     menuItems
                 case .favorites:
                     favoritesList
-                case .scorekeeper:
-                    ScorekeeperView()
-                case .dice:
-                    DiceToolView()
                 case .admin:
                     adminPanel
                 }
@@ -66,7 +62,7 @@ struct MyPanelSheet: View {
         .padding(.bottom, 14)
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(DesignTokens.stone400.opacity(0.18))
+                .fill(DesignTokens.borderSubtle)
                 .frame(height: 1)
         }
     }
@@ -75,8 +71,6 @@ struct MyPanelSheet: View {
         switch viewModel.myPanelScreen {
         case .menu: return "我的"
         case .favorites: return "我的收藏"
-        case .scorekeeper: return "计分器"
-        case .dice: return "骰子"
         case .admin: return "管理者模式"
         }
     }
@@ -86,13 +80,7 @@ struct MyPanelSheet: View {
             panelMenuCard(title: "我的收藏", subtitle: "查找收藏的游戏", icon: "star.fill", tone: .orange) {
                 viewModel.myPanelScreen = .favorites
             }
-            panelMenuCard(title: "计分器", subtitle: "记录玩家得分", icon: "trophy.fill", tone: .orange) {
-                viewModel.myPanelScreen = .scorekeeper
-            }
-            panelMenuCard(title: "骰子", subtitle: "随机掷出 1-6 点", icon: "dice.fill", tone: .purple) {
-                viewModel.myPanelScreen = .dice
-            }
-            panelMenuCard(title: "管理者模式", subtitle: "会员框开关与游戏卡片管理", icon: "lock.fill", tone: DesignTokens.stone600) {
+            panelMenuCard(title: "管理者模式", subtitle: "管理游戏卡片", icon: "lock.fill", tone: DesignTokens.stone600) {
                 viewModel.myPanelScreen = .admin
             }
         }
@@ -116,7 +104,7 @@ struct MyPanelSheet: View {
             }
             .padding(.horizontal, 14)
             .frame(minHeight: 48)
-            .background(.white)
+            .background(DesignTokens.surfaceElevated)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
             if favorites.isEmpty {
@@ -158,9 +146,8 @@ struct MyPanelSheet: View {
                     }
                     .font(DesignTokens.bodyFont(size: 12))
                     .foregroundStyle(DesignTokens.stone600)
+                    .buttonStyle(.hapticPlain)
                 }
-
-                membershipBoxToggle
 
                 Text("游戏卡片管理")
                     .font(DesignTokens.titleFont(size: 17))
@@ -172,7 +159,7 @@ struct MyPanelSheet: View {
                             Text(game.type.emoji)
                                 .font(.system(size: 22))
                                 .frame(width: 42, height: 42)
-                                .background(DesignTokens.creamBackground)
+                                .background(DesignTokens.surfaceMuted)
                                 .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(game.name)
@@ -188,7 +175,7 @@ struct MyPanelSheet: View {
                                 .foregroundStyle(DesignTokens.stone400)
                         }
                         .padding(12)
-                        .background(.white)
+                        .background(DesignTokens.surfaceElevated)
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
                 }
@@ -201,7 +188,7 @@ struct MyPanelSheet: View {
                     .font(DesignTokens.bodyFont(size: 15, weight: .semibold))
                     .padding(.horizontal, 14)
                     .frame(minHeight: 50)
-                    .background(.white)
+                    .background(DesignTokens.surfaceElevated)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
                 if !adminError.isEmpty {
@@ -221,13 +208,13 @@ struct MyPanelSheet: View {
                 } label: {
                     Text("进入管理者模式")
                         .font(DesignTokens.bodyFont(size: 14))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(DesignTokens.inverseText)
                         .frame(maxWidth: .infinity)
                         .frame(minHeight: 50)
-                        .background(DesignTokens.stone900)
+                        .background(DesignTokens.inverseSurface)
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.hapticPlain)
 
                 Text("默认密码：888888")
                     .font(DesignTokens.bodyFont(size: 11, weight: .semibold))
@@ -235,51 +222,12 @@ struct MyPanelSheet: View {
             }
         }
         .padding(16)
-        .background(Color.white.opacity(0.76))
+        .background(DesignTokens.surfaceElevatedSoft)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(DesignTokens.stone400.opacity(0.18), lineWidth: 1)
+                .stroke(DesignTokens.borderSubtle, lineWidth: 1)
         }
-    }
-
-    private var membershipBoxToggle: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "crown.fill")
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(DesignTokens.brandYellow)
-                .frame(width: 40, height: 40)
-                .background(DesignTokens.brandYellow.opacity(0.16))
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("会员框显示")
-                    .font(DesignTokens.titleFont(size: 16))
-                    .foregroundStyle(DesignTokens.stone900)
-                Text("控制首页 PREMIUM 推广条")
-                    .font(DesignTokens.bodyFont(size: 11, weight: .semibold))
-                    .foregroundStyle(DesignTokens.stone500)
-            }
-            Spacer(minLength: 8)
-            Toggle(
-                "会员框显示",
-                isOn: Binding(
-                    get: { viewModel.membershipBoxEnabled },
-                    set: { viewModel.setMembershipBoxEnabled($0) }
-                )
-            )
-            .labelsHidden()
-            .tint(Color(red: 1.0, green: 0.35, blue: 0.28))
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color(red: 1.0, green: 0.35, blue: 0.28).opacity(0.35), lineWidth: 1.5)
-        }
-        .shadow(color: Color.black.opacity(0.06), radius: 8, y: 3)
     }
 
     private func circleButton(systemImage: String, action: @escaping () -> Void) -> some View {
@@ -291,7 +239,7 @@ struct MyPanelSheet: View {
                 .background(DesignTokens.stone400.opacity(0.16))
                 .clipShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hapticPlain)
     }
 
     private func panelMenuCard(
@@ -323,14 +271,14 @@ struct MyPanelSheet: View {
                     .foregroundStyle(DesignTokens.stone400)
             }
             .padding(15)
-            .background(Color.white.opacity(0.82))
+            .background(DesignTokens.surfaceElevatedSoft)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(DesignTokens.stone400.opacity(0.18), lineWidth: 1)
+                    .stroke(DesignTokens.borderSubtle, lineWidth: 1)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hapticPlain)
     }
 
     private func favoriteCard(_ game: Game) -> some View {
@@ -352,7 +300,7 @@ struct MyPanelSheet: View {
                     }
                 }
                 .frame(width: 58, height: 58)
-                .background(DesignTokens.creamBackground)
+                .background(DesignTokens.surfaceMuted)
                 .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -368,9 +316,9 @@ struct MyPanelSheet: View {
                     .foregroundStyle(.pink)
             }
             .padding(12)
-            .background(.white)
+            .background(DesignTokens.surfaceElevated)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hapticPlain)
     }
 }

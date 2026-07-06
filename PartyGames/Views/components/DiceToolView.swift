@@ -20,7 +20,11 @@ struct DiceToolView: View {
                     .frame(width: 160, height: 160)
                     .background(
                         LinearGradient(
-                            colors: [Color(white: 0.94), .white, Color(white: 0.88)],
+                            colors: [
+                                DesignTokens.surfaceInset,
+                                DesignTokens.surfaceElevated,
+                                DesignTokens.surfaceMuted,
+                            ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -37,23 +41,23 @@ struct DiceToolView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 28)
             .padding(.horizontal, 24)
-            .background(Color.white)
+            .background(DesignTokens.surfaceElevated)
             .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(DesignTokens.stone400.opacity(0.25), lineWidth: 1)
+                    .stroke(DesignTokens.borderSubtle, lineWidth: 1)
             }
 
             Button(action: rollDice) {
                 Text(rolling ? "掷骰中…" : "掷骰子")
                     .font(DesignTokens.bodyFont(size: 14))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(DesignTokens.inverseText)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(DesignTokens.stone900)
+                    .background(DesignTokens.inverseSurface)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.hapticPlain)
             .disabled(rolling)
             .opacity(rolling ? 0.6 : 1)
         }
@@ -65,7 +69,6 @@ struct DiceToolView: View {
     private func rollDice() {
         guard !rolling else { return }
         rolling = true
-        HapticService.light()
 
         rollTask?.cancel()
         rollTask = Task {

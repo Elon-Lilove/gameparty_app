@@ -80,6 +80,7 @@ enum MoodCategory: String, Codable, CaseIterable, Sendable {
 enum HomeTab: String, CaseIterable, Hashable, Sendable {
     case home
     case library
+    case tools
     case me
 }
 
@@ -101,17 +102,9 @@ enum SpinPhase: String, Sendable {
     case settle
 }
 
-enum PromoPhase: Sendable {
-    case visible
-    case closing
-    case hidden
-}
-
 enum MyPanelScreen: String, Sendable {
     case menu
     case favorites
-    case scorekeeper
-    case dice
     case admin
 }
 

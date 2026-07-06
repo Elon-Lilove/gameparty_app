@@ -15,8 +15,9 @@ struct ScorekeeperView: View {
                     .foregroundStyle(DesignTokens.stone600)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Color(white: 0.94))
+                    .background(DesignTokens.surfaceInset)
                     .clipShape(Capsule())
+                    .buttonStyle(.hapticPlain)
             }
 
             ForEach($players) { $player in
@@ -32,7 +33,7 @@ struct ScorekeeperView: View {
                 .foregroundStyle(DesignTokens.stone600)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
-                .background(Color.white.opacity(0.7))
+                .background(DesignTokens.surfaceElevatedSoft)
                 .overlay {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
@@ -40,7 +41,7 @@ struct ScorekeeperView: View {
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.hapticPlain)
             .disabled(players.count >= 8)
             .opacity(players.count >= 8 ? 0.45 : 1)
         }
@@ -80,12 +81,12 @@ struct ScorekeeperView: View {
                         .background(Color.pink.opacity(0.1))
                         .clipShape(Circle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.hapticPlain)
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(Color.white)
+        .background(DesignTokens.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
@@ -97,12 +98,12 @@ struct ScorekeeperView: View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(filled ? .white : DesignTokens.stone600)
+                .foregroundStyle(filled ? DesignTokens.inverseText : DesignTokens.stone600)
                 .frame(width: 40, height: 40)
-                .background(filled ? DesignTokens.stone900 : Color(white: 0.94))
+                .background(filled ? DesignTokens.inverseSurface : DesignTokens.surfaceInset)
                 .clipShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hapticPlain)
     }
 
     private func updatePlayers(_ next: [ScorePlayer]) {
@@ -114,7 +115,6 @@ struct ScorekeeperView: View {
         updatePlayers(players.map { player in
             player.id == id ? ScorePlayer(id: player.id, name: player.name, score: player.score + delta) : player
         })
-        HapticService.light()
     }
 
     private func addPlayer() {
