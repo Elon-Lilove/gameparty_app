@@ -92,9 +92,12 @@ enum CardSwipePhysics {
 
         let projection = DesignTokens.swipeVelocityProjection
             + DesignTokens.flyOutVelocityProjectionBoost * throwIntensity
-        var target = CGSize(
-            width: base.width + velocity.width * projection,
-            height: base.height + velocity.height * projection
+        var target = continuedFlyOutTarget(
+            decision: decision,
+            base: base,
+            translation: translation,
+            velocity: velocity,
+            projection: projection
         )
 
         let extraDistance = (
@@ -177,6 +180,41 @@ enum CardSwipePhysics {
             return CGSize(width: overshoot, height: 0)
         case .dismissUp:
             return CGSize(width: 0, height: -layoutWidth * 1.35)
+        }
+    }
+
+    /// Start the throw from the release position, then add only the remaining off-screen travel.
+    private static func continuedFlyOutTarget(
+        decision: Decision,
+        base: CGSize,
+        translation: CGSize,
+        velocity: CGSize,
+        projection: CGFloat
+    ) -> CGSize {
+        switch decision {
+        case .dismissNext, .dismissPrevious:
+            let direction: CGFloat = decision == .dismissNext ? -1 : 1
+            let releasedDistance = max(0, direction * translation.width)
+            let remainingDistance = max(0, abs(base.width) - releasedDistance)
+            let sameDirectionVelocity = max(0, direction * velocity.width)
+
+            return CGSize(
+                width: translation.width + direction * (remainingDistance + sameDirectionVelocity * projection),
+                height: translation.height + velocity.height * projection * 0.10
+            )
+
+        case .dismissUp:
+            let releasedDistance = max(0, -translation.height)
+            let remainingDistance = max(0, abs(base.height) - releasedDistance)
+            let upwardVelocity = max(0, -velocity.height)
+
+            return CGSize(
+                width: translation.width + velocity.width * projection * 0.08,
+                height: translation.height - (remainingDistance + upwardVelocity * projection)
+            )
+
+        case .snapBack:
+            return .zero
         }
     }
 

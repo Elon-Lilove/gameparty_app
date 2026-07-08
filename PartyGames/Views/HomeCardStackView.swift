@@ -1,4 +1,8 @@
 import SwiftUI
+import UIKit
+
+private let maxConcurrentFlyOutSnapshots = 3
+private let cardEntryAnimationDuration: Double = 0.16
 
 struct HomeCardStackView: View {
     let games: [Game]
@@ -14,6 +18,9 @@ struct HomeCardStackView: View {
     var onSwipeNext: () -> Void
     var onSwipePrev: () -> Void
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.displayScale) private var displayScale
+
     @State private var cardOffset: CGSize = .zero
     @State private var cardRotation: Double = 0
     @State private var cardScale: CGFloat = 1
@@ -23,6 +30,9 @@ struct HomeCardStackView: View {
     @State private var isDragging = false
     @State private var locked = false
     @State private var suppressTap = false
+    @State private var cardEntryScale: CGFloat = 1
+    @State private var cardEntryOpacity: Double = 1
+    @State private var activeFlyOutSnapshots: [SwipeCardFlyOutSnapshot] = []
 
     var body: some View {
         GeometryReader { proxy in
@@ -105,6 +115,15 @@ struct HomeCardStackView: View {
 
                 mainCard(layoutWidth: layoutWidth)
                     .zIndex(spinning ? 3 : 2)
+
+                ForEach(activeFlyOutSnapshots) { snapshot in
+                    SwipeCardSnapshotAnimator(snapshot: snapshot) { snapshotID, _ in
+                        completeSnapshotAnimation(snapshotID: snapshotID)
+                    }
+                    .frame(width: layoutWidth, height: DesignTokens.stackMinHeight, alignment: .top)
+                    .zIndex(4)
+                    .allowsHitTesting(false)
+                }
             }
         }
         .frame(height: DesignTokens.stackMinHeight)
@@ -236,10 +255,10 @@ struct HomeCardStackView: View {
             perspective: spinning ? 0.55 : 0.92
         )
         .rotationEffect(.degrees(spinning ? 0 : cardRotation))
-        .scaleEffect(spinning ? spinCardScale : cardScale)
+        .scaleEffect(spinning ? spinCardScale : cardScale * cardEntryScale)
         .scaleEffect(spinPhase == .settle ? 1.012 : 1)
         .offset(x: spinning ? 0 : cardOffset.width, y: spinning ? 0 : cardOffset.height)
-        .opacity(spinning ? 1 : cardOpacity)
+        .opacity(spinning ? 1 : cardOpacity * cardEntryOpacity)
         .animation(
             spinning ? DesignTokens.spinFlipAnimation(phase: spinPhase, progress: spinProgress) : nil,
             value: current.id
@@ -257,7 +276,8 @@ struct HomeCardStackView: View {
         .animation(cardInteractionAnimation, value: cardOpacity)
         .animation(peekInteractionAnimation, value: leftPeekProgress)
         .animation(peekInteractionAnimation, value: rightPeekProgress)
-        .gesture(swipeGesture(layoutWidth: layoutWidth))
+        .contentShape(Rectangle())
+        .highPriorityGesture(swipeGesture(layoutWidth: layoutWidth))
         .scaleEffect(DesignTokens.mainCardScale)
         .frame(maxWidth: .infinity, alignment: .top)
         .id(current.id)
@@ -383,13 +403,34 @@ struct HomeCardStackView: View {
             layoutWidth: width
         )
         let exitSlide = DesignTokens.flyOutAnimation(duration: flyPlan.duration)
+        let targetRotation = CardSwipePhysics.exitRotation(
+            decision: decision,
+            currentRotation: cardRotation
+        )
+
+        if let snapshot = makeFlyOutSnapshot(
+            decision: decision,
+            translation: translation,
+            flyPlan: flyPlan,
+            targetRotation: targetRotation
+        ) {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                appendFlyOutSnapshot(snapshot)
+                advanceSelection(for: decision)
+                resetCardTransforms()
+                locked = false
+            }
+            clearTapSuppressionSoon()
+            startCardEntryAnimation()
+            armSnapshotSwipeFallback(snapshotID: snapshot.id, duration: snapshot.duration)
+            return
+        }
 
         withAnimation(exitSlide) {
             cardOffset = flyPlan.target
-            cardRotation = CardSwipePhysics.exitRotation(
-                decision: decision,
-                currentRotation: cardRotation
-            )
+            cardRotation = targetRotation
         } completion: {
             withAnimation(DesignTokens.flyOutFadeAnimation) {
                 cardOpacity = 0
@@ -407,6 +448,108 @@ struct HomeCardStackView: View {
         }
         withAnimation(exitSlide) {
             promotePeekToFull(for: decision)
+        }
+    }
+
+    private func makeFlyOutSnapshot(
+        decision: CardSwipePhysics.Decision,
+        translation: CGSize,
+        flyPlan: CardSwipePhysics.FlyOutPlan,
+        targetRotation: Double
+    ) -> SwipeCardFlyOutSnapshot? {
+        guard let image = renderCurrentCardImage() else { return nil }
+        return SwipeCardFlyOutSnapshot(
+            image: image,
+            decision: decision,
+            cardSize: CGSize(width: DesignTokens.cardWidth, height: DesignTokens.cardMinHeight),
+            startOffset: translation,
+            targetOffset: flyPlan.target,
+            startRotation: cardRotation,
+            targetRotation: targetRotation,
+            startScale: DesignTokens.mainCardScale * cardScale * cardEntryScale,
+            targetScale: DesignTokens.mainCardScale,
+            duration: flyPlan.duration
+        )
+    }
+
+    private func appendFlyOutSnapshot(_ snapshot: SwipeCardFlyOutSnapshot) {
+        activeFlyOutSnapshots.append(snapshot)
+        let overflow = activeFlyOutSnapshots.count - maxConcurrentFlyOutSnapshots
+        if overflow > 0 {
+            activeFlyOutSnapshots.removeFirst(overflow)
+        }
+    }
+
+    private func renderCurrentCardImage() -> UIImage? {
+        let palette = GameHeaderPalettes.palette(forGameID: current.id, in: games)
+        let content = FeaturedGameCardView(
+            game: current,
+            palette: palette,
+            image: images[current.id] ?? AssetStore.bundledImage(for: current.id),
+            isFavorite: isFavorite(current.id),
+            promoteProgress: 1,
+            onToggleFavorite: {},
+            onStart: {}
+        )
+        .environment(\.colorScheme, colorScheme)
+        .frame(width: DesignTokens.cardWidth, height: DesignTokens.cardMinHeight)
+
+        let renderer = ImageRenderer(content: content)
+        renderer.proposedSize = ProposedViewSize(
+            width: DesignTokens.cardWidth,
+            height: DesignTokens.cardMinHeight
+        )
+        renderer.scale = displayScale
+        return renderer.uiImage
+    }
+
+    private func armSnapshotSwipeFallback(
+        snapshotID: UUID,
+        duration: Double
+    ) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.25) {
+            completeSnapshotAnimation(snapshotID: snapshotID)
+        }
+    }
+
+    private func completeSnapshotAnimation(snapshotID: UUID) {
+        guard activeFlyOutSnapshots.contains(where: { $0.id == snapshotID }) else { return }
+
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            activeFlyOutSnapshots.removeAll { $0.id == snapshotID }
+        }
+    }
+
+    private func advanceSelection(for decision: CardSwipePhysics.Decision) {
+        switch decision {
+        case .dismissNext, .dismissUp:
+            onSwipeNext()
+        case .dismissPrevious:
+            onSwipePrev()
+        case .snapBack:
+            break
+        }
+    }
+
+    private func clearTapSuppressionSoon() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            suppressTap = false
+        }
+    }
+
+    private func startCardEntryAnimation() {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            cardEntryScale = 0.985
+            cardEntryOpacity = 0.96
+        }
+
+        withAnimation(.timingCurve(0.2, 0.8, 0.2, 1, duration: cardEntryAnimationDuration)) {
+            cardEntryScale = 1
+            cardEntryOpacity = 1
         }
     }
 
@@ -436,6 +579,8 @@ struct HomeCardStackView: View {
         cardRotation = 0
         cardScale = 1
         cardOpacity = 1
+        cardEntryScale = 1
+        cardEntryOpacity = 1
         leftPeekProgress = 0
         rightPeekProgress = 0
     }

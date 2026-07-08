@@ -17,12 +17,17 @@ struct FeaturedGameCardView: View {
         return min(1, (promoteProgress - phaseEnd) / (1 - phaseEnd))
     }
 
+    private var artDepth: GameCardTopSection.ArtDepth {
+        GameCardTopSection.ArtDepth(promoteProgress: promoteProgress)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             GameCardTopSection(
                 game: game,
                 palette: palette,
                 image: image,
+                artDepth: artDepth,
                 showsFavorite: promoteProgress > DesignTokens.peekPositionPhaseEnd,
                 isFavorite: isFavorite,
                 onToggleFavorite: onToggleFavorite

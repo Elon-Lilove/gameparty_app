@@ -8,10 +8,22 @@ struct GameCardTopSection: View {
         case peek
     }
 
+    struct ArtDepth: Equatable {
+        var imageScale: CGFloat
+        var shadeOpacity: Double
+
+        init(promoteProgress: CGFloat) {
+            let progress = min(1, max(0, promoteProgress))
+            imageScale = 1.08 - 0.08 * progress
+            shadeOpacity = Double(0.22 * (1 - progress))
+        }
+    }
+
     let game: Game
     let palette: GameHeaderPalette
     var image: UIImage?
     var layout: Layout = .main
+    var artDepth = ArtDepth(promoteProgress: 1)
     var showsFavorite: Bool = false
     var isFavorite: Bool = false
     var onToggleFavorite: (() -> Void)?
@@ -107,6 +119,7 @@ struct GameCardTopSection: View {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
+                    .scaleEffect(artDepth.imageScale)
                     .frame(width: DesignTokens.artWidth, height: DesignTokens.artHeight)
                     .clipped()
             } else {
@@ -118,6 +131,9 @@ struct GameCardTopSection: View {
                 Text(game.type.emoji)
                     .font(.system(size: 52))
             }
+            Color.white
+                .opacity(artDepth.shadeOpacity)
+                .allowsHitTesting(false)
         }
     }
 }

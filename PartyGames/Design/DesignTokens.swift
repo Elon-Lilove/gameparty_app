@@ -181,18 +181,18 @@ enum DesignTokens {
     static let swipeThreshold: CGFloat = 80
     static let swipeVelocityThreshold: CGFloat = 420
     static let swipeUpPositionThreshold: CGFloat = 88
-    static let swipeVelocityProjection: CGFloat = 0.28
-    static let flyOutVelocityProjectionBoost: CGFloat = 0.18
-    static let flyOutExtraDistanceBase: CGFloat = 100
-    static let flyOutExtraDistanceLayoutFactor: CGFloat = 0.18
+    static let swipeVelocityProjection: CGFloat = 0.10
+    static let flyOutVelocityProjectionBoost: CGFloat = 0.04
+    static let flyOutExtraDistanceBase: CGFloat = 44
+    static let flyOutExtraDistanceLayoutFactor: CGFloat = 0.08
     static let flyOutSpeedNormalization: CGFloat = 900
     /// Tinder-style coast-off duration; fast flicks use the longer end.
-    static let flyOutDurationMin: Double = 0.50
-    static let flyOutDurationMax: Double = 0.78
-    static let flyOutOpacityFadeDuration: Double = 0.12
+    static let flyOutDurationMin: Double = 0.62
+    static let flyOutDurationMax: Double = 0.92
+    static let flyOutOpacityFadeDuration: Double = 0.18
     /// Max rotation while dragging; linear in horizontal distance.
-    static let maxDragRotation: Double = 20
-    static let maxExitRotation: Double = 20
+    static let maxDragRotation: Double = 14
+    static let maxExitRotation: Double = 14
     static let dragRotationDivisor: CGFloat = 16
     static let dragScaleMaxReduction: CGFloat = 0.055
     static let dragScaleFactor: CGFloat = 0.00009
@@ -213,7 +213,7 @@ enum DesignTokens {
     /// Gentle deceleration — card coasts off screen like Tinder.
     static func flyOutAnimation(duration: Double) -> Animation {
         let clamped = min(flyOutDurationMax, max(flyOutDurationMin, duration))
-        return .timingCurve(0.28, 0.82, 0.36, 1, duration: clamped)
+        return .timingCurve(0.18, 0.72, 0.22, 1, duration: clamped)
     }
 
     static var flyOutFadeAnimation: Animation {
