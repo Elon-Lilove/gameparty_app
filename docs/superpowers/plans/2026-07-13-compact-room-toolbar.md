@@ -14,7 +14,7 @@
 - The toolbar is one row with no horizontal scrolling or wrapping.
 - Icons are left of the exact labels `玩家邀请`, `房主转让`, `语音播放`, and `台板（茶水）`.
 - Visible buttons are equal width and at least 44pt/px high.
-- Remove toolbar `+1`, `+5`, and `退出房间`; retain player-row swipe exit.
+- Remove toolbar `+1`, `+5`, and `退出房间`; retain iOS player-row swipe exit and render Web exit in the current player's row.
 - Current ownership always comes from the latest authoritative `ownerDeviceId`.
 - Do not add dependencies or change the server mutation protocol.
 - Because the working tree contains pre-existing overlapping untracked files, implementation checkpoints must not stage or commit those files without separate user authorization.
@@ -215,7 +215,7 @@ Render `玩家邀请` for every active member, `房主转让` only when `owner =
 </button>
 ```
 
-Use the symbols `＋`, `⇄`, `▶`, and `♨` respectively. Remove `data-table-score` and toolbar leave markup. Build a `visiblePlayers` array before rendering: when `options.tableEnabled` is true and no active player has seat `table` or name `台板`, append a view-only player with id `__table_service__`, name `台板`, seat `table`, score 0, and the next sort order. For either the synthetic or authoritative table row, use `data-table-give` when `options.tableEnabled && canMutate`; otherwise render no table score action.
+Use the symbols `＋`, `⇄`, `▶`, and `♨` respectively. Remove `data-table-score` and toolbar leave markup. Render the guest's existing leave action in their own player row, preserving the zero-balance rule and disabled explanation. Build a `visiblePlayers` array before rendering: when `options.tableEnabled` is true and no active player has seat `table` or name `台板`, append a view-only player with id `__table_service__`, name `台板`, seat `table`, score 0, and the next sort order. For either the synthetic or authoritative table row, use `data-table-give` when `options.tableEnabled && canMutate`; otherwise render no table score action.
 
 - [ ] **Step 4: Run the render tests and verify GREEN**
 
