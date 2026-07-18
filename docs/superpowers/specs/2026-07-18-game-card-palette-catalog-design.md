@@ -5,7 +5,7 @@ Status: Approved visual direction; ready for implementation planning
 
 ## Summary
 
-Replace the current hue-generated card colors with a bundled catalog of 96 curated, multi-color palettes. Each game may explicitly select a palette by ID. Games without an override receive a deterministic palette derived from the game ID, so filtering, sorting, or inserting games does not unexpectedly change existing card colors.
+Replace the current hue-generated card colors with a bundled catalog of 96 curated, multi-color palettes. Each game stores a palette ID. New or imported games receive an adjacency-aware assignment that avoids recently used color families, and that assignment is persisted so filtering, sorting, or restarting the app does not unexpectedly change existing card colors.
 
 The palette direction is based on the supplied reference screenshot: jewel-dark surfaces with luminous accents and pale ornament colors, paired with cream/pastel surfaces and stronger accent colors. The implementation will reuse the color relationships only. It will not copy Genshin artwork, card ornaments, logos, or character assets.
 
@@ -27,7 +27,9 @@ This creates four problems:
 - Store palettes as a bundled JSON resource that can be edited without rewriting SwiftUI views.
 - Give every palette a stable, human-readable ID.
 - Allow each game to specify an optional `paletteID`.
-- Give unassigned games a deterministic fallback based only on `game.id`.
+- Assign and persist a `paletteID` when a new game is created or imported.
+- Prevent automatic assignment from reusing any of the previous six color families in canonical creation order.
+- Balance usage so all 96 palettes are exercised before heavy repetition develops.
 - Keep the same game color across the home deck, filtered library, and detail view.
 - Support both dark jewel cards and light pastel cards with readable semantic foreground colors.
 - Validate data shape, unique IDs, color syntax, and contrast through automated tests.
@@ -38,6 +40,7 @@ This creates four problems:
 - Reproducing the reference card artwork or ornamental design.
 - Providing a runtime palette editor or admin interface.
 - Guaranteeing that thousands of games all have unique palettes; controlled reuse is expected after 96 assignments.
+- Guaranteeing color-family separation after an arbitrary user filter or custom sort. Static assignments remain stable, so removing the intervening games can bring two previously separated families together.
 - Downloading palettes from a server in this phase.
 - Introducing a third-party color or JSON dependency.
 
@@ -154,6 +157,25 @@ The property is optional so existing JSON and sample-game initializers remain co
 "paletteID": "violet-l1"
 ```
 
+All bundled production games will be backfilled with explicit palette IDs during migration. The optional type remains for backward-compatible decoding and draft/import workflows.
+
+### `GamePaletteAllocator`
+
+The allocator runs when games are created, imported, or migrated. It does not run during SwiftUI rendering.
+
+For each game without a valid palette ID, processed in canonical creation order:
+
+1. Read the families used by the previous six assigned games.
+2. Exclude every palette belonging to those families.
+3. Among the remaining palettes, keep only those with the lowest global usage count.
+4. Sort the candidates by stable palette ID.
+5. Use an FNV-1a hash of `game.id` only as the deterministic tie-breaker within that candidate set.
+6. Write the selected `paletteID` back to the game record or persistence layer.
+
+The 12-family catalog guarantees that at least six families remain eligible under the normal exclusion rule. Explicit author-selected palette IDs are preserved, even if they break the automatic spacing rule, but validation reports the adjacency exception.
+
+The current bundled game file will receive explicit IDs as part of the migration. Future remote or editorial ingestion should run the same allocator before a game becomes visible to users.
+
 ### Palette Resolver
 
 All call sites use one API:
@@ -165,13 +187,12 @@ GameHeaderPalettes.palette(for: game)
 Resolution order:
 
 1. If `game.paletteID` matches a catalog ID, return that palette.
-2. Otherwise compute a deterministic FNV-1a hash of the UTF-8 bytes in `game.id`.
-3. Select `hash % paletteCount` from the ordered catalog.
-4. If the catalog is empty or invalid, return the built-in safe palette.
+2. If an older or draft game has no valid ID, return a deterministic FNV-1a fallback based on `game.id` and emit a debug diagnostic that the record still needs allocation.
+3. If the catalog is empty or invalid, return the built-in safe palette.
 
 Swift's standard `Hasher` will not be used because its seed is intentionally randomized between processes.
 
-An unknown explicit palette ID falls back to the deterministic game-ID assignment. Debug builds should emit an assertion or diagnostic that names the invalid palette ID, while release builds continue safely.
+The hash fallback is a compatibility safety net, not the normal assignment path. It cannot guarantee adjacency spacing because it has no list context. An unknown explicit palette ID uses this fallback. Debug builds should emit an assertion or diagnostic that names the invalid palette ID, while release builds continue safely.
 
 ## View Integration
 
@@ -196,11 +217,25 @@ This phase changes color tokens only. It does not add the ornamental frame graph
 
 1. `AppBootstrap` warms the palette catalog with the existing game payload.
 2. `GameStore` decodes games, including an optional `paletteID`.
-3. A card view asks `GameHeaderPalettes.palette(for: game)` for its semantic palette.
-4. The resolver uses an explicit ID or deterministic fallback.
-5. The same palette object drives the home, library, and detail representations.
+3. Creation/import tooling allocates and persists IDs for records that do not have one.
+4. A card view asks `GameHeaderPalettes.palette(for: game)` for its semantic palette.
+5. The resolver uses the persisted ID; legacy records use the diagnostic fallback.
+6. The same palette object drives the home, library, and detail representations.
 
 Filtering and sorting affect which games are visible, but never participate in color assignment.
+
+## Adjacency Rules
+
+The approved 96-item catalog has no exact duplicate adjacent palettes in storage order. The nearest same-family entry is 12 positions away, and an exact palette repeats only after the 96-item cycle.
+
+Production assignment uses a stronger rule than catalog order:
+
+- automatic assignment must not reuse a family found in the preceding six canonical games;
+- palette usage counts are balanced before the FNV-1a tie-breaker is applied;
+- an explicit editorial override is allowed but produces a validation warning if it breaks spacing;
+- arbitrary filtering may collapse the visible gap, but the game retains its stored palette.
+
+The preview review also found two particularly close light-family pairs (`amethyst-l2`/`rose-l2` and `amethyst-l3`/`rose-l3`). Before shipping, those four records will be adjusted until their weighted CIEDE2000 distance is at least 12. The composite distance uses 35% background top, 35% background bottom, 18% accent, and 12% ornament.
 
 ## Accessibility and Contrast
 
@@ -222,6 +257,7 @@ Color is not the only signal for game type, favorites, tags, or actions; existin
 - Invalid hex string: reject the affected catalog load in tests; production falls back safely.
 - Duplicate palette ID: reject the catalog in tests; production keeps the safe fallback.
 - Unknown game `paletteID`: use stable game-ID fallback and emit a debug diagnostic.
+- No eligible automatic assignment candidate: relax the usage-count tie first, but never relax the six-family exclusion while at least one candidate remains.
 - Empty game ID: hash the empty byte sequence consistently; the game model remains responsible for requiring meaningful IDs.
 
 ## Performance
@@ -242,18 +278,23 @@ Add focused unit tests that verify:
 8. The same `game.id` resolves to the same palette regardless of list order or filtering.
 9. Different processes receive the same fallback assignment because the resolver does not use randomized `Hasher`.
 10. Existing games without `paletteID` continue to decode.
+11. A deterministic 1,000-game fixture never reuses a color family within the previous six automatic assignments.
+12. Palette usage in the 1,000-game fixture remains balanced; the most-used and least-used automatic palettes differ by at most two assignments.
+13. Re-running the allocator over identical input produces identical palette IDs.
+14. Explicit editorial overrides remain unchanged and spacing violations are reported.
 
 Run the full Swift package test suite and an iOS build after the focused tests pass.
 
 ## Migration Sequence
 
 1. Add catalog decoding and validation tests.
-2. Add the 96-record JSON resource.
-3. Add semantic foreground roles and deterministic resolution.
-4. Add optional `Game.paletteID` support.
-5. Replace index-based palette calls in the home, library, and detail views.
-6. Replace hard-coded foreground colors on palette surfaces.
-7. Run focused tests, the full test suite, and the iOS build.
+2. Add the 96-record JSON resource and correct the two overly similar light-family pairs.
+3. Add optional `Game.paletteID` support and the adjacency-aware allocator.
+4. Backfill explicit palette IDs for the bundled games.
+5. Add semantic foreground roles and persisted-ID resolution.
+6. Replace index-based palette calls in the home, library, and detail views.
+7. Replace hard-coded foreground colors on palette surfaces.
+8. Run focused tests, the full test suite, and the iOS build.
 
 ## Success Criteria
 
@@ -261,5 +302,7 @@ Run the full Swift package test suite and an iOS build after the focused tests p
 - The first six reference-derived combinations remain visually traceable to the supplied screenshot.
 - A game's color does not change when the user filters or reorders games.
 - A content author can replace a game's palette by editing only its `paletteID`.
+- Automatically assigned games do not reuse a color family within the previous six canonical games.
+- The 96 palettes remain evenly used across large generated game catalogs.
 - Dark and light cards remain readable in every card surface.
 - No reference artwork, logo, or ornament graphic is copied.
