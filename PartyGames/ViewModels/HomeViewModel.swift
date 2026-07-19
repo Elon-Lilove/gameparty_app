@@ -5,10 +5,11 @@ import UIKit
 @MainActor
 @Observable
 final class HomeViewModel {
-    var games: [Game] = GameStore.load()
-    var favoriteIds: [String] = FavoritesStore.load()
-    var historyIds: [String] = HistoryStore.load()
-    var gameImages: [String: UIImage] = AssetStore.loadImages()
+    private(set) var isReady = false
+    var games: [Game] = []
+    var favoriteIds: [String] = []
+    var historyIds: [String] = []
+    var gameImages: [String: UIImage] = [:]
 
     var moodFilter: MoodCategory = .funny
     var playerCountFilter: Int? = nil
@@ -28,22 +29,66 @@ final class HomeViewModel {
     var diceFace: Int = 0
     var deckOffset: Int = 0
 
+    private(set) var filteredGames: [Game] = []
+    private var gamesById: [String: Game] = [:]
     private var spinTask: Task<Void, Never>?
+    private var imagePreloadTask: Task<Void, Never>?
+    private var hasBootstrapped = false
 
-    init() {
+    init() {}
+
+    func bootstrapIfNeeded() async {
+        guard !hasBootstrapped else { return }
+        hasBootstrapped = true
+
+        let payload = await Task.detached(priority: .userInitiated) {
+            AppBootstrap.loadPayload()
+        }.value
+
+        games = payload.games
+        favoriteIds = payload.favoriteIds
+        historyIds = payload.historyIds
+        gamesById = Dictionary(uniqueKeysWithValues: games.map { ($0.id, $0) })
         selectedGameId = games.first?.id
+        rebuildFilteredGames()
+        isReady = true
+        // 图片预加载交给首页首帧后再做，避免拖慢 isReady。
+    }
+
+    // MARK: - Images
+
+    func gameImage(for gameId: String) -> UIImage? {
+        gameImages[gameId]
+    }
+
+    func preloadImages(for gameIds: [String]) {
+        let missing = Set(gameIds.filter { gameImages[$0] == nil })
+        guard !missing.isEmpty else { return }
+
+        imagePreloadTask?.cancel()
+        imagePreloadTask = Task {
+            let loaded = await Task.detached(priority: .utility) {
+                AssetStore.loadImages(for: Array(missing))
+            }.value
+
+            guard !Task.isCancelled else { return }
+            for (gameId, image) in loaded where gameImages[gameId] == nil {
+                gameImages[gameId] = image
+            }
+        }
+    }
+
+    func preloadImagesForCurrentDeck() {
+        guard let featured = featuredGame else { return }
+        let ids = deckImageGameIDs(around: featured.id)
+        preloadImages(for: ids)
+    }
+
+    func preloadImagesForLibrary() {
+        preloadImages(for: filteredGames.map(\.id))
     }
 
     // MARK: - Filtering
-
-    var filteredGames: [Game] {
-        games.filter { game in
-            let playerMatch = isAllPlayerCount(playerCountFilter) || game.matchesPlayerCount(playerCountFilter ?? 0)
-            let typeMatch = typeFilter == nil || game.type == typeFilter
-            let moodMatch = game.matchesMood(moodFilter)
-            return playerMatch && typeMatch && moodMatch
-        }
-    }
 
     var activeSelection: Game? {
         if let id = selectedGameId,
@@ -90,16 +135,19 @@ final class HomeViewModel {
         let next = (current + direction + filteredGames.count) % filteredGames.count
         deckOffset = 0
         selectedGameId = filteredGames[next].id
+        preloadImagesForCurrentDeck()
     }
 
     func selectGame(_ game: Game) {
         guard spinPhase == .idle, !filteredGames.isEmpty else { return }
         deckOffset = 0
         selectedGameId = game.id
+        preloadImagesForCurrentDeck()
     }
 
     func openDetail(_ game: Game) {
         detailGame = game
+        preloadImages(for: [game.id])
     }
 
     func closeDetail() {
@@ -123,6 +171,7 @@ final class HomeViewModel {
         }
         selectedGameId = filteredGames.first?.id
         deckOffset = 0
+        preloadImagesForCurrentDeck()
     }
 
     func setMoodFilter(_ mood: MoodCategory) {
@@ -131,16 +180,19 @@ final class HomeViewModel {
         } else {
             moodFilter = mood
         }
+        rebuildFilteredGames()
         syncSelectionAfterFilterChange()
     }
 
     func setPlayerCountFilter(_ count: Int?) {
         playerCountFilter = count
+        rebuildFilteredGames()
         syncSelectionAfterFilterChange()
     }
 
     func setTypeFilter(_ type: GameType?) {
         typeFilter = type
+        rebuildFilteredGames()
         syncSelectionAfterFilterChange()
     }
 
@@ -184,6 +236,7 @@ final class HomeViewModel {
                     if let picked = filteredGames[safeIndex: targetIndex] {
                         HistoryStore.prepend(picked.id, to: &historyIds)
                     }
+                    preloadImagesForCurrentDeck()
                     return
                 }
 
@@ -224,14 +277,37 @@ final class HomeViewModel {
     }
 
     func historyGames() -> [Game] {
-        historyIds.compactMap { id in games.first(where: { $0.id == id }) }
+        historyIds.compactMap { gamesById[$0] }
     }
 
     func favoriteGames() -> [Game] {
-        favoriteIds.compactMap { id in games.first(where: { $0.id == id }) }
+        favoriteIds.compactMap { gamesById[$0] }
     }
 
     // MARK: - Helpers
+
+    private func rebuildFilteredGames() {
+        filteredGames = games.filter { game in
+            let playerMatch = isAllPlayerCount(playerCountFilter) || game.matchesPlayerCount(playerCountFilter ?? 0)
+            let typeMatch = typeFilter == nil || game.type == typeFilter
+            let moodMatch = game.matchesMood(moodFilter)
+            return playerMatch && typeMatch && moodMatch
+        }
+    }
+
+    private func deckImageGameIDs(around gameId: String) -> [String] {
+        guard let index = filteredGames.firstIndex(where: { $0.id == gameId }) else {
+            return [gameId]
+        }
+
+        let count = filteredGames.count
+        var ids: [String] = []
+        for offset in -2...2 {
+            let wrapped = (index + offset + count) % count
+            ids.append(filteredGames[wrapped].id)
+        }
+        return ids
+    }
 
     private func isAllPlayerCount(_ count: Int?) -> Bool {
         count == nil || count == 0

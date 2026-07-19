@@ -1,0 +1,21 @@
+{
+  "name": "mahjong-score-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:migrate:local": "wrangler d1 migrations apply mahjong_score_db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply mahjong_score_db --remote"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.18.4",
+    "@cloudflare/workers-types": "^5.20260713.1",
+    "typescript": "^5.5.4",
+    "vitest": "^4.1.10",
+    "wrangler": "^4.110.0"
+  }
+}

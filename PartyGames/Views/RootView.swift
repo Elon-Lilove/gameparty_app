@@ -1,11 +1,55 @@
 import SwiftUI
 
 public struct RootView: View {
+    @Binding private var isLaunchScreenVisible: Bool
     @State private var viewModel = HomeViewModel()
+    @State private var showNotificationPermission = false
 
-    public init() {}
+    public init(isLaunchScreenVisible: Binding<Bool> = .constant(false)) {
+        _isLaunchScreenVisible = isLaunchScreenVisible
+    }
 
     public var body: some View {
+        mainShell
+            .overlay {
+                if showNotificationPermission {
+                    NotificationPermissionView {
+                        showNotificationPermission = false
+                    }
+                    .transition(.opacity)
+                    .zIndex(20)
+                }
+            }
+            .task {
+                await dismissLaunchWhenReady()
+                await presentNotificationPromptIfNeeded()
+            }
+    }
+
+    private func dismissLaunchWhenReady() async {
+        async let bootstrap: Void = viewModel.bootstrapIfNeeded()
+        async let minimumDisplay: Void = {
+            try? await Task.sleep(for: .milliseconds(320))
+        }()
+        _ = await (bootstrap, minimumDisplay)
+
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            isLaunchScreenVisible = false
+        }
+    }
+
+    private func presentNotificationPromptIfNeeded() async {
+        await NotificationPermissionStore.refreshSystemAuthorizationAndCompleteIfNeeded()
+        if NotificationPermissionStore.shouldShowPrompt {
+            showNotificationPermission = true
+        } else {
+            await NetworkWarmup.run()
+        }
+    }
+
+    private var mainShell: some View {
         TabView(selection: tabSelection) {
             Tab("首页", systemImage: "house.fill", value: HomeTab.home) {
                 NavigationStack {
@@ -15,24 +59,35 @@ public struct RootView: View {
 
             Tab("游戏库", systemImage: "gamecontroller.fill", value: HomeTab.library) {
                 NavigationStack {
-                    LibraryGridView(viewModel: viewModel)
+                    if viewModel.homeTab == .library {
+                        LibraryGridView(viewModel: viewModel)
+                    }
                 }
             }
 
             Tab("工具", systemImage: "wrench.and.screwdriver.fill", value: HomeTab.tools) {
                 NavigationStack {
-                    ToolsTabView()
+                    if viewModel.homeTab == .tools {
+                        ToolsTabView()
+                    }
                 }
             }
 
             Tab("我的", systemImage: "face.smiling", value: HomeTab.me) {
                 NavigationStack {
-                    MyTabView(viewModel: viewModel)
+                    if viewModel.homeTab == .me {
+                        MyTabView(viewModel: viewModel)
+                    }
                 }
             }
         }
         .tint(DesignTokens.tabAccent)
         .tabBarMinimizeBehavior(.onScrollDown)
+        .onChange(of: viewModel.homeTab) { _, newTab in
+            if newTab == .library {
+                viewModel.preloadImagesForLibrary()
+            }
+        }
     }
 
     private var tabSelection: Binding<HomeTab> {

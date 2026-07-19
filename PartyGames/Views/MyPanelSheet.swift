@@ -290,7 +290,7 @@ struct MyPanelSheet: View {
         } label: {
             HStack(spacing: 12) {
                 ZStack {
-                    if let image = viewModel.gameImages[game.id] ?? AssetStore.bundledImage(for: game.id) {
+                    if let image = viewModel.gameImage(for: game.id) {
                         Image(uiImage: image)
                             .resizable()
                             .scaledToFill()

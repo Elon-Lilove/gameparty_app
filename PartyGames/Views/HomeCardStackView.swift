@@ -13,6 +13,7 @@ struct HomeCardStackView: View {
     var spinPhase: SpinPhase = .idle
     var spinProgress: Double = 0
     var deckScale: CGFloat = 1
+    var showsSidePeeks: Bool = true
     var onToggleFavorite: (String) -> Void
     var onOpen: () -> Void
     var onSwipeNext: () -> Void
@@ -89,7 +90,7 @@ struct HomeCardStackView: View {
                     .zIndex(1)
                 }
 
-                if let prev = neighbor(offset: -1), rightPeekProgress <= 0.001 {
+                if showsSidePeeks, let prev = neighbor(offset: -1) {
                     stackGameCard(
                         game: prev,
                         side: .left,
@@ -97,11 +98,12 @@ struct HomeCardStackView: View {
                         layoutWidth: layoutWidth,
                         peekInset: peekInset
                     )
-                    .zIndex(leftPeekProgress > 0.02 ? 2 : 1)
+                    .zIndex(1.5)
+                    .opacity(restingPeekOpacity(side: .left))
                     .onTapGesture { triggerSwipe(.dismissPrevious) }
                 }
 
-                if let next = neighbor(offset: 1), leftPeekProgress <= 0.001 {
+                if showsSidePeeks, let next = neighbor(offset: 1) {
                     stackGameCard(
                         game: next,
                         side: .right,
@@ -109,12 +111,13 @@ struct HomeCardStackView: View {
                         layoutWidth: layoutWidth,
                         peekInset: peekInset
                     )
-                    .zIndex(rightPeekProgress > 0.02 ? 2 : 1)
+                    .zIndex(1.5)
+                    .opacity(restingPeekOpacity(side: .right))
                     .onTapGesture { triggerSwipe(.dismissNext) }
                 }
 
                 mainCard(layoutWidth: layoutWidth)
-                    .zIndex(spinning ? 3 : 2)
+                    .zIndex(3)
 
                 ForEach(activeFlyOutSnapshots) { snapshot in
                     SwipeCardSnapshotAnimator(snapshot: snapshot) { snapshotID, _ in
@@ -173,7 +176,7 @@ struct HomeCardStackView: View {
             promoteProgress: 0,
             motionProgress: emergeProgress
         )
-        .opacity(min(1, max(0.55, emergeProgress)))
+        .opacity(peekSwapOpacity(emergeProgress))
     }
 
     /// Outgoing main card moves from center into the opposite peek slot while dragging.
@@ -199,8 +202,8 @@ struct HomeCardStackView: View {
         promoteProgress: CGFloat,
         motionProgress: CGFloat
     ) -> some View {
-        let palette = GameHeaderPalettes.palette(forGameID: game.id, in: games)
-        let image = images[game.id] ?? AssetStore.bundledImage(for: game.id)
+        let palette = palette(for: game)
+        let image = images[game.id]
         let depth = peekDragDepth(motionProgress: motionProgress)
 
         return FeaturedGameCardView(
@@ -236,11 +239,11 @@ struct HomeCardStackView: View {
     }
 
     private func mainCard(layoutWidth: CGFloat) -> some View {
-        let palette = GameHeaderPalettes.palette(forGameID: current.id, in: games)
+        let palette = palette(for: current)
         return FeaturedGameCardView(
             game: current,
             palette: palette,
-            image: images[current.id] ?? AssetStore.bundledImage(for: current.id),
+            image: images[current.id],
             isFavorite: isFavorite(current.id),
             promoteProgress: 1,
             onToggleFavorite: { onToggleFavorite(current.id) },
@@ -321,6 +324,21 @@ struct HomeCardStackView: View {
     }
 
     private enum Side { case left, right }
+
+    private func restingPeekOpacity(side: Side) -> Double {
+        switch side {
+        case .left:
+            return 1 - peekSwapOpacity(rightPeekProgress)
+        case .right:
+            return 1 - peekSwapOpacity(leftPeekProgress)
+        }
+    }
+
+    private func peekSwapOpacity(_ progress: CGFloat) -> Double {
+        let p = min(1, max(0, progress))
+        let eased = p * p * (3 - 2 * p)
+        return Double(eased)
+    }
 
     /// Blur + slight scale-down for peeks that stay in the background during a drag.
     private func peekDragDepth(motionProgress: CGFloat) -> (blur: CGFloat, scale: CGFloat) {
@@ -481,11 +499,11 @@ struct HomeCardStackView: View {
     }
 
     private func renderCurrentCardImage() -> UIImage? {
-        let palette = GameHeaderPalettes.palette(forGameID: current.id, in: games)
+        let palette = palette(for: current)
         let content = FeaturedGameCardView(
             game: current,
             palette: palette,
-            image: images[current.id] ?? AssetStore.bundledImage(for: current.id),
+            image: images[current.id],
             isFavorite: isFavorite(current.id),
             promoteProgress: 1,
             onToggleFavorite: {},
@@ -587,7 +605,17 @@ struct HomeCardStackView: View {
 
     private func neighbor(offset: Int) -> Game? {
         guard games.count > 1 else { return nil }
-        let index = games.firstIndex(where: { $0.id == current.id }) ?? 0
-        return games[(index + offset + games.count) % games.count]
+        return games[(currentGameIndex + offset + games.count) % games.count]
+    }
+
+    private var currentGameIndex: Int {
+        games.firstIndex(where: { $0.id == current.id }) ?? 0
+    }
+
+    private func palette(for game: Game) -> GameHeaderPalette {
+        guard let index = games.firstIndex(where: { $0.id == game.id }) else {
+            return GameHeaderPalettes.palette(forGameIndex: currentGameIndex)
+        }
+        return GameHeaderPalettes.palette(forGameIndex: index)
     }
 }

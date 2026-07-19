@@ -17,5 +17,18 @@ xcuserdata/
 .env.*
 !.env.example
 
+# Node / Cloudflare local output
+node_modules/
+dist/
+.wrangler/
+
 # Local Codex working files
 .codex-work/
+.derivedData-local/
+.home/
+.idea/
+.superpowers/
+output/
+
+# Local Netlify folder
+.netlify

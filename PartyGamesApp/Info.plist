@@ -22,6 +22,10 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>MahjongScoreBaseURL</key>
+	<string>https://party-games-mahjong-join.netlify.app/api</string>
+	<key>MahjongWebBaseURL</key>
+	<string>https://party-games-mahjong-join.netlify.app</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIUserInterfaceStyle</key>

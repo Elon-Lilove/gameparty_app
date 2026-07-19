@@ -1,0 +1,2 @@
+/api/*  https://mahjong-score-worker.d03054144.workers.dev/:splat  200!
+/*    /index.html   200

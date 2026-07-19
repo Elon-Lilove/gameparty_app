@@ -10,7 +10,7 @@ struct GameDetailView: View {
     }
 
     private var image: UIImage? {
-        viewModel.gameImages[game.id] ?? AssetStore.bundledImage(for: game.id)
+        viewModel.gameImage(for: game.id)
     }
 
     var body: some View {

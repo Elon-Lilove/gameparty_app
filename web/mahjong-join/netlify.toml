@@ -1,0 +1,16 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# 把 /api/* 反代到 Cloudflare Worker，提升国内 HTTPS 可达性
+[[redirects]]
+  from = "/api/*"
+  to = "https://mahjong-score-worker.d03054144.workers.dev/:splat"
+  status = 200
+  force = true
+  headers = {X-From = "netlify-proxy"}
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

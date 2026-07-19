@@ -1,76 +1,55 @@
 import SwiftUI
 
-private enum ToolsScreen {
-    case menu
+private enum ToolsScreen: Hashable {
     case scorekeeper
+    case mahjongScorekeeper
     case dice
 }
 
 struct ToolsTabView: View {
-    @State private var screen: ToolsScreen = .menu
+    @State private var path = NavigationPath()
 
     var body: some View {
-        VStack(spacing: 0) {
-            if screen != .menu {
-                detailHeader
-            }
-
+        NavigationStack(path: $path) {
             ScrollView(showsIndicators: false) {
-                Group {
-                    switch screen {
-                    case .menu:
-                        menuContent
-                    case .scorekeeper:
+                menuContent
+                    .padding(.horizontal, DesignTokens.pageHorizontalPadding)
+                    .padding(.top, 14)
+                    .padding(.bottom, 24)
+                    .frame(maxWidth: .infinity, alignment: .top)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .creamBackground()
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(for: ToolsScreen.self) { screen in
+                switch screen {
+                case .scorekeeper:
+                    toolDetail(title: "计分器") {
                         ScorekeeperView()
-                    case .dice:
+                    }
+                case .mahjongScorekeeper:
+                    MahjongScorekeeperView()
+                case .dice:
+                    toolDetail(title: "骰子") {
                         DiceToolView()
                     }
                 }
+            }
+        }
+    }
+
+    private func toolDetail<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        ScrollView(showsIndicators: false) {
+            content()
                 .padding(.horizontal, DesignTokens.pageHorizontalPadding)
-                .padding(.top, screen == .menu ? 14 : 0)
+                .padding(.top, 8)
                 .padding(.bottom, 24)
                 .frame(maxWidth: .infinity, alignment: .top)
-            }
-            .scrollBounceBehavior(.basedOnSize)
         }
+        .scrollBounceBehavior(.basedOnSize)
         .creamBackground()
-        .toolbar(.hidden, for: .navigationBar)
-    }
-
-    private var detailHeader: some View {
-        HStack(spacing: 10) {
-            circleButton(systemImage: "chevron.left") {
-                screen = .menu
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("TOOLS")
-                    .font(DesignTokens.bodyFont(size: 10))
-                    .tracking(2)
-                    .foregroundStyle(DesignTokens.stone400)
-                Text(screenTitle)
-                    .font(DesignTokens.titleFont(size: 24))
-                    .foregroundStyle(DesignTokens.stone900)
-            }
-
-            Spacer()
-        }
-        .padding(.horizontal, DesignTokens.pageHorizontalPadding)
-        .padding(.top, 16)
-        .padding(.bottom, 14)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(DesignTokens.borderSubtle)
-                .frame(height: 1)
-        }
-    }
-
-    private var screenTitle: String {
-        switch screen {
-        case .menu: return "工具"
-        case .scorekeeper: return "计分器"
-        case .dice: return "骰子"
-        }
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var menuContent: some View {
@@ -96,7 +75,16 @@ struct ToolsTabView: View {
                     foreground: Color(red: 0.72, green: 0.47, blue: 0.08),
                     background: Color.orange.opacity(0.13)
                 ) {
-                    screen = .scorekeeper
+                    path.append(ToolsScreen.scorekeeper)
+                }
+                menuCard(
+                    title: "麻将计分器",
+                    subtitle: "在线房间，最多 20 人",
+                    systemImage: "square.grid.3x3.fill",
+                    foreground: Color(red: 0.10, green: 0.55, blue: 0.42),
+                    background: Color.green.opacity(0.12)
+                ) {
+                    path.append(ToolsScreen.mahjongScorekeeper)
                 }
                 menuCard(
                     title: "骰子",
@@ -105,7 +93,7 @@ struct ToolsTabView: View {
                     foreground: .purple,
                     background: Color.purple.opacity(0.12)
                 ) {
-                    screen = .dice
+                    path.append(ToolsScreen.dice)
                 }
             }
         }
@@ -144,24 +132,12 @@ struct ToolsTabView: View {
             }
             .padding(15)
             .frame(maxWidth: .infinity, alignment: .leading)
-                .background(DesignTokens.surfaceElevatedSoft)
+            .background(DesignTokens.surfaceElevatedSoft)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(DesignTokens.borderSubtle, lineWidth: 1)
             }
-        }
-        .buttonStyle(.hapticPlain)
-    }
-
-    private func circleButton(systemImage: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(DesignTokens.stone600)
-                .frame(width: 44, height: 44)
-                .background(DesignTokens.stone400.opacity(0.16))
-                .clipShape(Circle())
         }
         .buttonStyle(.hapticPlain)
     }

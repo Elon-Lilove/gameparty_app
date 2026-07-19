@@ -1,0 +1,34 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "mahjong-score-worker",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-07-09",
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "MAHJONG_ROOM",
+				"class_name": "MahjongRoomObject"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": [
+				"MahjongRoomObject"
+			]
+		}
+	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "mahjong_score_db",
+			"database_id": "3c486c12-da2a-4a9a-8661-71462a29d320"
+		}
+	],
+	"secrets": {
+		"required": [
+			"MEMBER_TOKEN_SECRET"
+		]
+	}
+}

@@ -15,7 +15,7 @@ struct LibraryGridView: View {
                     LibraryGameCard(
                         game: game,
                         palette: GameHeaderPalettes.palette(forGameIndex: index),
-                        image: viewModel.gameImages[game.id],
+                        image: viewModel.gameImage(for: game.id),
                         isFavorite: viewModel.isFavorite(game.id),
                         onToggleFavorite: { viewModel.toggleFavorite(game.id) },
                         onTap: { viewModel.openDetail(game) }
@@ -25,6 +25,9 @@ struct LibraryGridView: View {
             .padding(.horizontal, DesignTokens.pageHorizontalPadding)
             .padding(.vertical, 12)
             .padding(.bottom, 12)
+        }
+        .onAppear {
+            viewModel.preloadImagesForLibrary()
         }
         .creamBackground()
         .navigationTitle("游戏库")

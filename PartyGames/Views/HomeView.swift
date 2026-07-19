@@ -2,6 +2,8 @@ import SwiftUI
 
 struct HomeView: View {
     @Bindable var viewModel: HomeViewModel
+    @State private var isCardDeckVisible = false
+    @State private var isSidePeeksVisible = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -27,6 +29,26 @@ struct HomeView: View {
         .navigationDestination(item: $viewModel.detailGame) { game in
             GameDetailView(game: game, viewModel: viewModel)
                 .toolbar(.hidden, for: .tabBar)
+        }
+        .onChange(of: viewModel.isReady) { _, ready in
+            guard ready else { return }
+            revealCardDeckIfNeeded()
+        }
+        .onAppear {
+            if viewModel.isReady {
+                revealCardDeckIfNeeded()
+            }
+        }
+    }
+
+    private func revealCardDeckIfNeeded() {
+        guard !isCardDeckVisible else { return }
+        Task { @MainActor in
+            await Task.yield()
+            isCardDeckVisible = true
+            await Task.yield()
+            viewModel.preloadImagesForCurrentDeck()
+            isSidePeeksVisible = true
         }
     }
 
@@ -74,7 +96,10 @@ struct HomeView: View {
 
     @ViewBuilder
     private var cardZone: some View {
-        if viewModel.filteredGames.isEmpty {
+        if !viewModel.isReady {
+            Color.clear
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if viewModel.filteredGames.isEmpty {
             VStack(spacing: 8) {
                 Text("没有匹配游戏")
                     .font(DesignTokens.titleFont(size: 18))
@@ -84,7 +109,7 @@ struct HomeView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.vertical, 48)
-        } else if let featured = viewModel.featuredGame {
+        } else if isCardDeckVisible, let featured = viewModel.featuredGame {
             GeometryReader { geo in
                 let bottomReserve = DesignTokens.cardBottomReserve
                 let availableHeight = max(0, geo.size.height - bottomReserve)
@@ -103,6 +128,7 @@ struct HomeView: View {
                     spinPhase: viewModel.spinPhase,
                     spinProgress: viewModel.spinProgress,
                     deckScale: deckScale,
+                    showsSidePeeks: isSidePeeksVisible,
                     onToggleFavorite: { viewModel.toggleFavorite($0) },
                     onOpen: { viewModel.openDetail(featured) },
                     onSwipeNext: { viewModel.moveSelection(1) },
@@ -134,7 +160,7 @@ struct HomeView: View {
 
             DiceSpinButton(
                 spinning: viewModel.isSpinning,
-                disabled: viewModel.isSpinning || viewModel.filteredGames.isEmpty,
+                disabled: viewModel.isSpinning || !viewModel.isReady || viewModel.filteredGames.isEmpty,
                 diceFace: viewModel.diceFace,
                 onPressStart: { HapticService.light() },
                 onRelease: { _ in viewModel.runSpin() }
