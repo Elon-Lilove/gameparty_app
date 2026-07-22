@@ -11,10 +11,10 @@ struct LibraryGridView: View {
     var body: some View {
         ScrollView {
             LazyVGrid(columns: columns, spacing: 12) {
-                ForEach(Array(viewModel.filteredGames.enumerated()), id: \.element.id) { index, game in
+                ForEach(Array(viewModel.filteredGames.enumerated()), id: \.element.id) { _, game in
                     LibraryGameCard(
                         game: game,
-                        palette: GameHeaderPalettes.palette(forGameIndex: index),
+                        palette: GameHeaderPalettes.palette(forGameID: game.id, in: viewModel.games),
                         image: viewModel.gameImage(for: game.id),
                         isFavorite: viewModel.isFavorite(game.id),
                         onToggleFavorite: { viewModel.toggleFavorite(game.id) },

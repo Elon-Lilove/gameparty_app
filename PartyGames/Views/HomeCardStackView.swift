@@ -7,6 +7,7 @@ private let cardEntryAnimationDuration: Double = 0.16
 struct HomeCardStackView: View {
     let games: [Game]
     let current: Game
+    let catalogGames: [Game]
     let images: [String: UIImage]
     var isFavorite: (String) -> Bool
     var spinning: Bool
@@ -613,9 +614,7 @@ struct HomeCardStackView: View {
     }
 
     private func palette(for game: Game) -> GameHeaderPalette {
-        guard let index = games.firstIndex(where: { $0.id == game.id }) else {
-            return GameHeaderPalettes.palette(forGameIndex: currentGameIndex)
-        }
-        return GameHeaderPalettes.palette(forGameIndex: index)
+        // 配色基于稳定的全量目录（按 id 查索引），避免划走重排 filteredGames 时整副牌换色。
+        GameHeaderPalettes.palette(forGameID: game.id, in: catalogGames)
     }
 }

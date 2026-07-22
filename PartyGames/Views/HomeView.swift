@@ -122,6 +122,7 @@ struct HomeView: View {
                 HomeCardStackView(
                     games: viewModel.filteredGames,
                     current: featured,
+                    catalogGames: viewModel.games,
                     images: viewModel.gameImages,
                     isFavorite: { viewModel.isFavorite($0) },
                     spinning: viewModel.isSpinning,

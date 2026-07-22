@@ -131,10 +131,24 @@ final class HomeViewModel {
 
     func moveSelection(_ direction: Int) {
         guard spinPhase == .idle, !filteredGames.isEmpty, let active = activeSelection else { return }
-        let current = filteredGames.firstIndex(where: { $0.id == active.id }) ?? 0
-        let next = (current + direction + filteredGames.count) % filteredGames.count
+        let count = filteredGames.count
+        guard count >= 2 else { return }
+        let i = filteredGames.firstIndex(where: { $0.id == active.id }) ?? 0
+        let dismissed = filteredGames.remove(at: i)
+        let reduced = count - 1
+        // 后继（移除后在 N-1 数组中的索引）：左划取下一张、右划取上一张，均按循环环绕。
+        let succIdx: Int
+        if direction > 0 {
+            succIdx = (i < reduced) ? i : 0
+        } else {
+            succIdx = (i > 0) ? (i - 1) : (reduced - 1)
+        }
+        let successorID = filteredGames[succIdx].id
+        // 把划走的卡插到离后继约半副牌远的循环位置（环的对面），使其不落在 ±1/±2 副卡窗口。
+        let farIdx = (succIdx + reduced / 2) % reduced
+        filteredGames.insert(dismissed, at: farIdx)
         deckOffset = 0
-        selectedGameId = filteredGames[next].id
+        selectedGameId = successorID
         preloadImagesForCurrentDeck()
     }
 
