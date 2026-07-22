@@ -47,6 +47,7 @@ struct NotificationPermissionView: View {
                         }
                         .frame(height: max(56, h * 0.075))
                         .contentShape(Rectangle())
+                        .padding(.bottom, 55)
                     }
                     .buttonStyle(.plain)
                     .disabled(isRequesting || isResolvingStatus)
